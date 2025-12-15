@@ -94,11 +94,13 @@ PYMOL_VDI_ENABLED=true
 PYMOL_VDI_URL=http://pymol-vdi:6080
 
 # Shared volume path
-PYMOL_SHARED_VOLUME=/pymol-shared
+PYMOL_SHARED_VOLUME=./pymol-shared
 
 # Session timeout in seconds (default: 1 hour)
 PYMOL_SESSION_TIMEOUT=3600
 ```
+
+**Note:** PyMOL VDI runs without password by default for easier access. Users are already authenticated through the Flask web interface, so VNC password is optional.
 
 ### 3. Docker Compose Deployment
 

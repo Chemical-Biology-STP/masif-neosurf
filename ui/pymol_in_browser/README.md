@@ -19,7 +19,7 @@ docker-compose up -d
 open http://localhost:8080
 ```
 
-Default password: `pymol123` (change in docker-compose.yml)
+**Note:** Runs without password by default for easier access. To enable password protection, uncomment `VNC_PASSWORD` in docker-compose.yml.
 
 ## Components
 
@@ -31,13 +31,14 @@ Default password: `pymol123` (change in docker-compose.yml)
 ## Security Notes
 
 ⚠️ **Production Requirements:**
-- Change default VNC password
+- Enable VNC password (uncomment VNC_PASSWORD in docker-compose.yml)
 - Enable SSL/TLS (add certificates)
 - Implement proper authentication (OAuth, LDAP, etc.)
 - Add session isolation per user
 - Enable audit logging
 - Configure firewall rules
 - Limit concurrent sessions
+- Use reverse proxy with authentication (nginx/traefik)
 
 ## GPU Support
 

@@ -39,8 +39,8 @@ docker-compose up -d
 ```
 
 Then open your browser to:
-- **noVNC Interface:** http://localhost:6080
-- **Direct VNC:** vnc://localhost:5901 (password: `pymol123`)
+- **noVNC Interface:** http://localhost:6080 (no password required)
+- **Direct VNC:** vnc://localhost:5901 (no password required)
 - **Nginx Proxy:** http://localhost:8080
 
 To stop the test:
@@ -65,9 +65,11 @@ The main `ui/docker-compose.yml` references this image as `pymol_in_browser_pymo
 
 Edit `.env` or set in docker-compose.yml:
 
-- `VNC_PASSWORD` - Password for VNC access (default: `pymol123`)
+- `VNC_PASSWORD` - Password for VNC access (default: none/passwordless)
 - `VNC_RESOLUTION` - Screen resolution (default: `1280x1024`)
 - `VNC_DEPTH` - Color depth (default: `24`)
+
+**Note:** By default, VNC runs without a password for easier access. To enable password protection, uncomment the `VNC_PASSWORD` line in docker-compose.yml.
 
 ### GPU Support (Optional)
 
@@ -167,11 +169,12 @@ netstat -tulpn | grep 6080
 
 ⚠️ **For Production Use:**
 
-1. **Change default password:**
+1. **Enable VNC password (recommended for production):**
    ```yaml
    environment:
      - VNC_PASSWORD=your-secure-password
    ```
+   By default, VNC runs without password for easier development/testing.
 
 2. **Enable SSL/TLS:**
    - Add certificates to nginx.conf

@@ -5,7 +5,7 @@ services:
     build: .
     container_name: pymol-vnc
     environment:
-      - VNC_PASSWORD=pymol123
+      # VNC_PASSWORD=pymol123  # Uncomment to require password
       - VNC_RESOLUTION=1280x1024
       - VNC_DEPTH=24
     ports:

@@ -37,7 +37,7 @@ services:
     volumes:
       - ./pymol-shared:/data:ro  # Read-only access to shared data (bind mount)
     environment:
-      - VNC_PASSWORD=pymol123
+      # No VNC_PASSWORD = passwordless access (easier for users)
       - DISPLAY=:1
     networks:
       - masif-network
