@@ -48,11 +48,176 @@ HPC_CONFIG = {
     'masif_repo': os.environ.get('HPC_MASIF_REPO', '')
 }
 
+# PyMOL VDI Configuration
+PYMOL_CONFIG = {
+    'enabled': os.environ.get('PYMOL_VDI_ENABLED', 'false').lower() == 'true',
+    'url': os.environ.get('PYMOL_VDI_URL', 'http://localhost:6080'),
+    'shared_volume': Path(os.environ.get('PYMOL_SHARED_VOLUME', '/pymol-shared')),
+    'session_timeout': int(os.environ.get('PYMOL_SESSION_TIMEOUT', '3600'))  # 1 hour default
+}
+
+# Create PyMOL shared directory if enabled
+if PYMOL_CONFIG['enabled']:
+    PYMOL_CONFIG['shared_volume'].mkdir(parents=True, exist_ok=True)
+
 # Create necessary directories
 app.config['UPLOAD_FOLDER'].mkdir(exist_ok=True)
 app.config['OUTPUT_FOLDER'].mkdir(exist_ok=True)
 
 ALLOWED_EXTENSIONS = {'pdb', 'sdf'}
+
+
+# Docker Management Functions
+def check_docker_available():
+    """Check if Docker is available on the system"""
+    import subprocess
+    try:
+        result = subprocess.run(['docker', '--version'], 
+                              capture_output=True, 
+                              text=True, 
+                              timeout=5)
+        return result.returncode == 0
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return False
+
+
+def check_pymol_container_status():
+    """Check if PyMOL VDI container is running
+    
+    Returns:
+        str: 'running', 'stopped', 'not_found', or 'error'
+    """
+    import subprocess
+    try:
+        # Check for container by name pattern
+        result = subprocess.run(
+            ['docker', 'ps', '-a', '--filter', 'name=pymol', '--format', '{{.Names}}\t{{.Status}}'],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        if result.returncode != 0:
+            return 'error'
+        
+        output = result.stdout.strip()
+        if not output:
+            return 'not_found'
+        
+        # Parse output - look for running status
+        for line in output.split('\n'):
+            if 'pymol' in line.lower():
+                if 'up' in line.lower():
+                    return 'running'
+                else:
+                    return 'stopped'
+        
+        return 'not_found'
+        
+    except Exception as e:
+        print(f"Error checking PyMOL container status: {e}")
+        return 'error'
+
+
+def start_pymol_container():
+    """Start the PyMOL VDI container using docker-compose
+    
+    Returns:
+        tuple: (success: bool, message: str)
+    """
+    import subprocess
+    
+    try:
+        # Get the directory where app.py is located
+        app_dir = Path(__file__).parent
+        compose_file = app_dir / 'docker-compose.yml'
+        
+        if not compose_file.exists():
+            return False, f"docker-compose.yml not found at {compose_file}"
+        
+        print("Starting PyMOL VDI container...")
+        
+        # Start the pymol-vdi service
+        result = subprocess.run(
+            ['docker-compose', 'up', '-d', 'pymol-vdi'],
+            cwd=str(app_dir),
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        
+        if result.returncode == 0:
+            print("✓ PyMOL VDI container started successfully")
+            return True, "PyMOL VDI container started successfully"
+        else:
+            error_msg = result.stderr or result.stdout
+            print(f"✗ Failed to start PyMOL VDI container: {error_msg}")
+            return False, f"Failed to start container: {error_msg}"
+            
+    except subprocess.TimeoutExpired:
+        return False, "Timeout while starting container"
+    except FileNotFoundError:
+        return False, "docker-compose command not found. Please install docker-compose."
+    except Exception as e:
+        return False, f"Error starting container: {str(e)}"
+
+
+def ensure_pymol_container_running():
+    """Ensure PyMOL VDI container is running, start it if needed
+    
+    This function is called during Flask app initialization
+    """
+    if not PYMOL_CONFIG['enabled']:
+        print("PyMOL VDI is disabled in configuration")
+        return
+    
+    print("\n" + "="*60)
+    print("Checking PyMOL VDI Container Status")
+    print("="*60)
+    
+    # Check if Docker is available
+    if not check_docker_available():
+        print("⚠️  Docker is not available on this system")
+        print("   PyMOL visualization will not work")
+        PYMOL_CONFIG['enabled'] = False
+        return
+    
+    # Check container status
+    status = check_pymol_container_status()
+    print(f"Container status: {status}")
+    
+    if status == 'running':
+        print("✓ PyMOL VDI container is already running")
+        
+    elif status == 'stopped':
+        print("⚠️  PyMOL VDI container exists but is stopped")
+        print("   Attempting to start...")
+        success, message = start_pymol_container()
+        if success:
+            print(f"✓ {message}")
+        else:
+            print(f"✗ {message}")
+            print("   PyMOL visualization may not work")
+            
+    elif status == 'not_found':
+        print("⚠️  PyMOL VDI container not found")
+        print("   Attempting to create and start...")
+        success, message = start_pymol_container()
+        if success:
+            print(f"✓ {message}")
+        else:
+            print(f"✗ {message}")
+            print("   Please run: docker-compose up -d pymol-vdi")
+            
+    else:  # error
+        print("✗ Error checking container status")
+        print("   PyMOL visualization may not work")
+    
+    print("="*60 + "\n")
+
+
+# Initialize PyMOL container on startup
+ensure_pymol_container_running()
 
 
 # User class for Flask-Login
@@ -1240,6 +1405,368 @@ def download_file(job_uuid, filename):
     # Get just the filename for the download
     download_filename = path_parts[-1]
     return send_file(local_file_path, as_attachment=True, download_name=download_filename)
+
+
+def cleanup_old_sessions(user_id, job_uuid):
+    """Clean up old PyMOL sessions for a specific user and job"""
+    import shutil
+    
+    if not PYMOL_CONFIG['enabled']:
+        return
+    
+    try:
+        shared_volume = PYMOL_CONFIG['shared_volume']
+        pattern = f"{user_id}_{job_uuid}_*"
+        
+        # Find and remove old sessions
+        for session_dir in shared_volume.glob(pattern):
+            if session_dir.is_dir():
+                try:
+                    shutil.rmtree(session_dir)
+                    print(f"Cleaned up old session: {session_dir.name}")
+                except Exception as e:
+                    print(f"Failed to cleanup {session_dir.name}: {e}")
+    except Exception as e:
+        print(f"Error during session cleanup: {e}")
+
+
+@app.route('/api/prepare-pymol-session/<job_uuid>')
+@login_required
+def prepare_pymol_session(job_uuid):
+    """Prepare a PyMOL VDI session with job files"""
+    import time
+    
+    if not PYMOL_CONFIG['enabled']:
+        return jsonify({'success': False, 'error': 'PyMOL visualization is not enabled'}), 503
+    
+    try:
+        # Get job directory
+        job_dirs = list(app.config['OUTPUT_FOLDER'].glob(f'*_{job_uuid}'))
+        if not job_dirs:
+            return jsonify({'success': False, 'error': 'Job not found'}), 404
+        
+        local_job_dir = job_dirs[0]
+        metadata_file = local_job_dir / 'metadata.json'
+        
+        if not metadata_file.exists():
+            return jsonify({'success': False, 'error': 'Job metadata not found'}), 404
+        
+        metadata = json.loads(metadata_file.read_text())
+        
+        # Check permissions
+        if not current_user.is_admin and metadata.get('user_id') != current_user.id:
+            return jsonify({'success': False, 'error': 'Access denied'}), 403
+        
+        # Ensure files are downloaded from HPC
+        try:
+            download_job_files_from_hpc(job_uuid, local_job_dir, metadata)
+        except Exception as e:
+            return jsonify({'success': False, 'error': f'Failed to download files: {str(e)}'}), 500
+        
+        # Clean up old sessions for this user and job
+        cleanup_old_sessions(current_user.id, job_uuid)
+        
+        # Create session directory in shared volume
+        session_id = f"{current_user.id}_{job_uuid}_{int(time.time())}"
+        session_dir = PYMOL_CONFIG['shared_volume'] / session_id
+        session_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Create symlink to job directory (or copy files)
+        import shutil
+        data_link = session_dir / 'data'
+        if data_link.exists():
+            data_link.unlink()
+        
+        # Copy files instead of symlink for better compatibility
+        shutil.copytree(local_job_dir, data_link, dirs_exist_ok=True)
+        
+        # Generate PyMOL startup script with absolute paths for container
+        pymol_script = generate_pymol_script(session_id, data_link, metadata)
+        script_file = session_dir / 'load_results.pml'
+        script_file.write_text(pymol_script)
+        
+        # Create session metadata
+        session_metadata = {
+            'session_id': session_id,
+            'user_id': current_user.id,
+            'job_uuid': job_uuid,
+            'job_name': metadata['job_name'],
+            'created_at': datetime.now().isoformat(),
+            'expires_at': (datetime.now().timestamp() + PYMOL_CONFIG['session_timeout'])
+        }
+        
+        # Create a README for the user
+        readme_file = session_dir / 'README.txt'
+        readme_content = f"""MaSIF-neosurf Results - {metadata['job_name']}
+{'='*60}
+
+To load the results in PyMOL, run this command in the PyMOL console:
+
+    @/data/{session_id}/load_results.pml
+
+Or drag and drop the load_results.pml file into PyMOL.
+
+Files are located in: /data/{session_id}/data/
+
+Session expires at: {datetime.fromtimestamp(session_metadata['expires_at']).strftime('%Y-%m-%d %H:%M:%S')}
+"""
+        readme_file.write_text(readme_content)
+        
+        session_metadata_file = session_dir / 'session.json'
+        session_metadata_file.write_text(json.dumps(session_metadata, indent=2))
+        
+        # Generate PyMOL VDI URL with auto-load script
+        # Use vnc.html for the noVNC interface
+        # Pass the script path as a parameter that PyMOL can auto-execute
+        script_path = f"/data/{session_id}/load_results.pml"
+        
+        # Create a startup script that PyMOL will auto-execute
+        startup_script = session_dir / 'startup.pml'
+        startup_script.write_text(f"@{script_path}\n")
+        
+        # URL with autoconnect
+        pymol_url = f"{PYMOL_CONFIG['url']}/vnc.html?autoconnect=true&resize=scale"
+        
+        return jsonify({
+            'success': True,
+            'pymol_url': pymol_url,
+            'session_id': session_id,
+            'script_path': script_path,
+            'expires_in': PYMOL_CONFIG['session_timeout']
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+def generate_pymol_script(session_id, job_dir, metadata):
+    """Generate PyMOL script to load MaSIF results
+    
+    Args:
+        session_id: The session ID (used to construct absolute paths in container)
+        job_dir: Local path to the data directory
+        metadata: Job metadata dictionary
+    """
+    # Base path inside the PyMOL container
+    container_data_path = f"/data/{session_id}/data"
+    
+    script = f"""# MaSIF-neosurf Results Visualization
+# Job: {metadata['job_name']}
+# Chain: {metadata['chain_id']}
+# Submitted: {metadata['submitted_at']}
+
+print "="*60
+print "Loading MaSIF-neosurf results..."
+print "Job: {metadata['job_name']}"
+print "="*60
+
+# Set background and rendering
+bg_color white
+set antialias, 2
+set ray_trace_mode, 1
+set surface_quality, 2
+set transparency, 0.3
+
+"""
+    
+    # Find PDB file
+    pdb_filename = metadata.get('pdb_file', '')
+    pdb_file = job_dir / pdb_filename
+    
+    if pdb_file.exists():
+        pdb_path = f"{container_data_path}/{pdb_filename}"
+        script += f"# Load PDB structure\n"
+        script += f"load {pdb_path}, protein\n"
+        script += "color cyan, protein\n"
+        script += "show cartoon, protein\n"
+        script += "hide lines, protein\n"
+        script += "print 'Loaded protein structure: {pdb_filename}'\n\n"
+    else:
+        script += f"print 'Warning: PDB file not found: {pdb_filename}'\n\n"
+    
+    script += "# Load surface files (.ply)\n"
+    
+    # Find and load .ply files
+    ply_files = sorted(job_dir.rglob('*.ply'))
+    
+    if ply_files:
+        for i, ply_file in enumerate(ply_files):
+            # Get relative path from job_dir
+            rel_path = ply_file.relative_to(job_dir)
+            # Construct absolute path in container
+            ply_path = f"{container_data_path}/{rel_path}"
+            obj_name = ply_file.stem.replace('-', '_').replace('.', '_')
+            
+            script += f"load {ply_path}, {obj_name}\n"
+            
+            # Color surfaces based on type
+            if 'target' in ply_file.name.lower():
+                script += f"color red, {obj_name}\n"
+            elif 'ligand' in ply_file.name.lower():
+                script += f"color yellow, {obj_name}\n"
+            else:
+                script += f"color green, {obj_name}\n"
+        
+        script += f"print 'Loaded {len(ply_files)} surface files'\n\n"
+    else:
+        script += "print 'Warning: No .ply surface files found'\n\n"
+    
+    script += """# Adjust view
+zoom
+center
+
+print "="*60
+print "MaSIF-neosurf results loaded successfully!"
+print "="*60
+print ""
+print "Mouse controls:"
+print "  Rotate: Left-click and drag"
+print "  Zoom: Scroll wheel"
+print "  Pan: Right-click and drag"
+print ""
+
+# Label
+set label_size, 20
+set label_color, black
+
+print "MaSIF-neosurf results loaded successfully!"
+print "Job: """ + metadata['job_name'] + """"
+print "Use mouse to rotate, zoom, and explore the structure"
+"""
+    
+    return script
+
+
+def download_job_files_from_hpc(job_uuid, local_job_dir, metadata):
+    """Download all job files from HPC if not already present"""
+    try:
+        client = get_ssh_client()
+        sftp = client.open_sftp()
+        remote_job_dir = metadata['remote_job_dir']
+        
+        import stat
+        
+        def download_recursive(sftp, remote_path, local_base_path):
+            try:
+                items = sftp.listdir_attr(remote_path)
+                for item in items:
+                    remote_item_path = f"{remote_path}/{item.filename}"
+                    relative_path = remote_item_path.replace(f"{remote_job_dir}/", "")
+                    local_item_path = local_base_path / relative_path
+                    
+                    if stat.S_ISDIR(item.st_mode):
+                        local_item_path.mkdir(parents=True, exist_ok=True)
+                        download_recursive(sftp, remote_item_path, local_base_path)
+                    elif stat.S_ISREG(item.st_mode):
+                        # Download if file doesn't exist or is empty
+                        if not local_item_path.exists() or local_item_path.stat().st_size == 0:
+                            local_item_path.parent.mkdir(parents=True, exist_ok=True)
+                            sftp.get(remote_item_path, str(local_item_path))
+            except Exception as e:
+                print(f"Error downloading {remote_path}: {e}")
+        
+        download_recursive(sftp, remote_job_dir, local_job_dir)
+        sftp.close()
+        client.close()
+        
+    except Exception as e:
+        print(f"Error connecting to HPC: {e}")
+        raise
+
+
+@app.route('/api/cleanup-pymol-session/<session_id>', methods=['POST'])
+@login_required
+def cleanup_pymol_session(session_id):
+    """Clean up a PyMOL session"""
+    if not PYMOL_CONFIG['enabled']:
+        return jsonify({'success': False, 'error': 'PyMOL visualization is not enabled'}), 503
+    
+    try:
+        session_dir = PYMOL_CONFIG['shared_volume'] / session_id
+        
+        if not session_dir.exists():
+            return jsonify({'success': True, 'message': 'Session already cleaned up'})
+        
+        # Verify session belongs to current user
+        session_metadata_file = session_dir / 'session.json'
+        if session_metadata_file.exists():
+            session_metadata = json.loads(session_metadata_file.read_text())
+            if session_metadata.get('user_id') != current_user.id and not current_user.is_admin:
+                return jsonify({'success': False, 'error': 'Access denied'}), 403
+        
+        # Remove session directory
+        import shutil
+        shutil.rmtree(session_dir)
+        
+        return jsonify({'success': True, 'message': 'Session cleaned up successfully'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/pymol-health')
+@login_required
+def pymol_health():
+    """Check PyMOL VDI container health status
+    
+    Returns container status and provides option to start if stopped
+    """
+    if not PYMOL_CONFIG['enabled']:
+        return jsonify({
+            'enabled': False,
+            'status': 'disabled',
+            'message': 'PyMOL visualization is disabled in configuration'
+        })
+    
+    # Check Docker availability
+    if not check_docker_available():
+        return jsonify({
+            'enabled': True,
+            'status': 'error',
+            'message': 'Docker is not available on this system',
+            'can_start': False
+        })
+    
+    # Check container status
+    container_status = check_pymol_container_status()
+    
+    response = {
+        'enabled': True,
+        'status': container_status,
+        'can_start': container_status in ['stopped', 'not_found']
+    }
+    
+    if container_status == 'running':
+        response['message'] = 'PyMOL VDI container is running'
+        response['url'] = PYMOL_CONFIG['url']
+    elif container_status == 'stopped':
+        response['message'] = 'PyMOL VDI container is stopped'
+    elif container_status == 'not_found':
+        response['message'] = 'PyMOL VDI container not found'
+    else:
+        response['message'] = 'Error checking container status'
+    
+    return jsonify(response)
+
+
+@app.route('/api/pymol-start', methods=['POST'])
+@login_required
+def pymol_start():
+    """Start the PyMOL VDI container (admin only)"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'error': 'Admin access required'}), 403
+    
+    if not PYMOL_CONFIG['enabled']:
+        return jsonify({'success': False, 'error': 'PyMOL visualization is disabled'}), 503
+    
+    success, message = start_pymol_container()
+    
+    if success:
+        return jsonify({'success': True, 'message': message})
+    else:
+        return jsonify({'success': False, 'error': message}), 500
 
 
 @app.route('/download-multiple', methods=['POST'])

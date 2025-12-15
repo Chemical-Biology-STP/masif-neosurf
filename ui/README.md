@@ -49,6 +49,14 @@ ui/
 - 📧 Email notifications on job completion/failure
 - 🗂️ Organized file browser with directory tree
 
+### PyMOL Visualization
+- 🔬 In-browser 3D visualization with PyMOL VDI
+- 🐳 **Automatic Docker container management** (starts on app launch)
+- 🎨 Automatic loading of protein structures and surfaces
+- 🖱️ Interactive rotation, zoom, and pan
+- 🔄 Session management with automatic cleanup
+- 📋 Simple command loading with Tab autocomplete
+
 ### User Experience
 - 🎨 Modern, professional UI with animations
 - 📱 Responsive design for mobile devices
@@ -56,6 +64,7 @@ ui/
 - 🔄 Auto-refresh for running jobs
 - 💡 Contextual help and documentation
 - ⚠️ Clear error messages and warnings
+- 🔬 **In-browser PyMOL visualization** (optional)
 
 ## 🔧 Configuration
 
@@ -89,6 +98,7 @@ Default credentials (⚠️ **change immediately**):
 - [Full Documentation](docs/README.md) - Complete setup and usage guide
 - [Email Service Setup](docs/EMAIL_SERVICE_README.md) - Email notification configuration
 - [Deployment Checklist](docs/DEPLOYMENT_CHECKLIST.md) - Production deployment guide
+- [PyMOL Integration](docs/PYMOL_INTEGRATION.md) - In-browser visualization setup
 
 ## 🛠️ Development
 

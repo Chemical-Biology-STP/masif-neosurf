@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  masif-web:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./outputs:/app/outputs
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - pymol-shared:/app/pymol-shared
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - HPC_HOST=${HPC_HOST}
+      - HPC_USER=${HPC_USER}
+      - HPC_SSH_KEY=${HPC_SSH_KEY}
+      - HPC_WORK_DIR=${HPC_WORK_DIR}
+      - HPC_PORT=${HPC_PORT}
+      - HPC_MODULE_INIT=${HPC_MODULE_INIT}
+      - HPC_EASYBUILD_PREFIX=${HPC_EASYBUILD_PREFIX}
+      - HPC_MASIF_REPO=${HPC_MASIF_REPO}
+      - PYMOL_VDI_ENABLED=true
+      - PYMOL_VDI_URL=http://pymol-vdi:6080
+      - PYMOL_SHARED_VOLUME=/app/pymol-shared
+      - PYMOL_SESSION_TIMEOUT=3600
+    networks:
+      - masif-network
+    depends_on:
+      - pymol-vdi
+
+  pymol-vdi:
+    image: pymol_in_browser_pymol-vnc:latest
+    ports:
+      - "6080:6080"
+    volumes:
+      - ./pymol-shared:/data:ro  # Read-only access to shared data (bind mount)
+    environment:
+      - VNC_PASSWORD=pymol123
+      - DISPLAY=:1
+    networks:
+      - masif-network
+    restart: unless-stopped
+
+volumes:
+  pymol-shared:
+    driver: local
+
+networks:
+  masif-network:
+    driver: bridge
