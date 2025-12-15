@@ -1,0 +1,16 @@
+[Unit]
+Description=MaSIF-neosurf Email Notification Service
+After=network.target
+
+[Service]
+Type=simple
+User=yipy
+WorkingDirectory=/home/yipy/GitHub/easybuild/software/masif-neosurf/ui
+ExecStart=/usr/bin/python3 /home/yipy/GitHub/easybuild/software/masif-neosurf/ui/email_notification_service.py
+Restart=always
+RestartSec=10
+StandardOutput=append:/home/yipy/GitHub/easybuild/software/masif-neosurf/ui/email_service.log
+StandardError=append:/home/yipy/GitHub/easybuild/software/masif-neosurf/ui/email_service.log
+
+[Install]
+WantedBy=multi-user.target

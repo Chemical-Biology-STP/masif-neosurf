@@ -1,0 +1,98 @@
+easyblock = 'Tarball'
+
+name = 'MaSIF-neosurf'
+version = '1.0'
+
+homepage = 'https://github.com/LPDI-EPFL/masif-neosurf'
+description = """
+MaSIF-neosurf - Surface-based protein design for ternary complexes.
+A computational strategy for the design of proteins that target neosurfaces,
+i.e. surfaces arising from protein-ligand complexes.
+This module provides a Singularity container with all dependencies pre-installed.
+"""
+
+toolchain = SYSTEM
+
+# If you have the .sif file locally, you can create a tarball:
+# tar czf masif-neosurf-1.0.tar.gz masif-neosurf.sif
+# Then upload to a web server or use local path
+sources = ['masif-neosurf-%(version)s.tar.gz']
+# Alternatively, if you don't want to create a tarball, comment out sources
+# and manually copy the .sif file in the install step
+
+checksums = ['']  # Add SHA256 checksum if using sources
+
+# No dependencies needed - everything is in the container
+dependencies = []
+
+# Create wrapper scripts for common commands
+postinstallcmds = [
+    # Create bin directory
+    'mkdir -p %(installdir)s/bin',
+    
+    # Create wrapper script for interactive shell
+    'cat > %(installdir)s/bin/masif-neosurf-shell << "EOF"\n'
+    '#!/bin/bash\n'
+    'MASIF_SIF="%(installdir)s/masif-neosurf.sif"\n'
+    'singularity shell --bind $PWD:/home "$MASIF_SIF" "$@"\n'
+    'EOF',
+    'chmod +x %(installdir)s/bin/masif-neosurf-shell',
+    
+    # Create wrapper script for exec
+    'cat > %(installdir)s/bin/masif-neosurf-exec << "EOF"\n'
+    '#!/bin/bash\n'
+    'MASIF_SIF="%(installdir)s/masif-neosurf.sif"\n'
+    'singularity exec --bind $PWD:/home "$MASIF_SIF" "$@"\n'
+    'EOF',
+    'chmod +x %(installdir)s/bin/masif-neosurf-exec',
+    
+    # Create wrapper for preprocess_pdb.sh
+    'cat > %(installdir)s/bin/masif-preprocess << "EOF"\n'
+    '#!/bin/bash\n'
+    'MASIF_SIF="%(installdir)s/masif-neosurf.sif"\n'
+    'singularity exec --bind $PWD:/home "$MASIF_SIF" /home/preprocess_pdb.sh "$@"\n'
+    'EOF',
+    'chmod +x %(installdir)s/bin/masif-preprocess',
+]
+
+# Set environment variables
+modextravars = {
+    'MASIF_NEOSURF_SIF': '%(installdir)s/masif-neosurf.sif',
+    'MASIF_NEOSURF_HOME': '%(installdir)s',
+}
+
+modloadmsg = """
+MaSIF-neosurf Singularity container loaded.
+
+Available commands:
+  masif-neosurf-shell    - Start interactive shell in container
+  masif-neosurf-exec     - Execute command in container
+  masif-preprocess       - Run preprocess_pdb.sh script
+
+Environment variables:
+  MASIF_NEOSURF_SIF      - Path to Singularity image
+  MASIF_NEOSURF_HOME     - Installation directory
+
+Examples:
+  # Interactive shell
+  masif-neosurf-shell
+
+  # Execute command
+  masif-neosurf-exec python3 --version
+
+  # Preprocess PDB
+  masif-preprocess example/1a7x.pdb 1A7X_A -o output/
+
+  # Direct singularity usage
+  singularity exec --bind $PWD:/home $MASIF_NEOSURF_SIF <command>
+
+For GPU support, add --nv flag:
+  singularity exec --nv --bind $PWD:/home $MASIF_NEOSURF_SIF <command>
+"""
+
+sanity_check_paths = {
+    'files': ['masif-neosurf.sif', 'bin/masif-neosurf-shell', 'bin/masif-neosurf-exec'],
+    'dirs': ['bin'],
+}
+
+moduleclass = 'bio'

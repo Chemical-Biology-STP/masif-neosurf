@@ -1,0 +1,25 @@
+# Directories with user data
+uploads/
+outputs/
+data/*.json
+logs/*.log
+logs/*.pid
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+venv/
+env/
+.pixi/
+pixi.lock

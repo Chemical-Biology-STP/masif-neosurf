@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% set hide_header = true %}
+{% set hide_footer = true %}
+
+{% block title %}Create Account - MaSIF-neosurf{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .auth-container {
+        max-width: 520px;
+        width: 100%;
+        margin: 2rem auto;
+    }
+    
+    .auth-card {
+        background: white;
+        border-radius: 16px;
+        padding: 3rem;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+    
+    .logo-section {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    
+    .logo-section img {
+        max-width: 180px;
+        height: auto;
+        margin-bottom: 1rem;
+    }
+    
+    .auth-card h1 {
+        text-align: center;
+        font-size: 1.875rem;
+        font-weight: 700;
+        color: var(--gray-900);
+        margin-bottom: 0.5rem;
+    }
+    
+    .auth-card .subtitle {
+        text-align: center;
+        color: var(--gray-500);
+        margin-bottom: 2rem;
+        font-size: 0.875rem;
+    }
+    
+    .auth-card .btn {
+        width: 100%;
+        padding: 1rem;
+        font-size: 1rem;
+    }
+    
+    .links {
+        text-align: center;
+        margin-top: 1.5rem;
+        font-size: 0.875rem;
+        color: var(--gray-600);
+    }
+    
+    .links a {
+        color: var(--primary);
+        text-decoration: none;
+        font-weight: 600;
+    }
+    
+    .links a:hover {
+        text-decoration: underline;
+    }
+    
+    .footer-text {
+        text-align: center;
+        margin-top: 2rem;
+        padding-top: 2rem;
+        border-top: 1px solid var(--gray-200);
+        font-size: 0.75rem;
+        color: var(--gray-500);
+    }
+    
+    .footer-text a {
+        color: var(--primary);
+        text-decoration: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="logo-section">
+            <img src="{{ url_for('static', filename='CRICK_Logotype_black_RGB.jpg') }}" alt="The Francis Crick Institute">
+        </div>
+        
+        <h1>Create Account</h1>
+        <p class="subtitle">Register to use MaSIF-neosurf with your @crick.ac.uk email</p>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <form method="POST" action="{{ url_for('register') }}">
+            <div class="form-group">
+                <label for="name">Full Name</label>
+                <input type="text" id="name" name="name" placeholder="John Doe" required autofocus>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" placeholder="your.name@crick.ac.uk" required pattern=".*@crick\.ac\.uk$" 
+                       title="Please use your @crick.ac.uk email address">
+                <div class="help-text">Must be a valid @crick.ac.uk email address</div>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="At least 8 characters" required minlength="8">
+                <div class="help-text">At least 8 characters</div>
+            </div>
+            
+            <div class="form-group">
+                <label for="confirm_password">Confirm Password</label>
+                <input type="password" id="confirm_password" name="confirm_password" placeholder="Re-enter your password" required>
+            </div>
+            
+            <button type="submit" class="btn">Create Account</button>
+        </form>
+        
+        <div class="links">
+            Already have an account? <a href="{{ url_for('login') }}">Sign in here</a>
+        </div>
+        
+        <div class="footer-text">
+            Created and maintained by <strong>Yew Mun Yip</strong><br>
+            <a href="https://www.crick.ac.uk/research/science-technology-platforms/chemical-biology" target="_blank">Chemical Biology STP</a> • The Francis Crick Institute
+        </div>
+    </div>
+</div>
+{% endblock %}

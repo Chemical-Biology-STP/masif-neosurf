@@ -1,0 +1,90 @@
+Bootstrap: docker
+From: pymesh/pymesh
+Stage: build
+
+%post
+    # Fix Debian Buster archived repositories
+    echo "deb http://archive.debian.org/debian/ buster main contrib non-free" > /etc/apt/sources.list
+    echo "deb http://archive.debian.org/debian-security buster/updates main" >> /etc/apt/sources.list
+    
+    # Disable repository signature checking for archived repos
+    echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
+    
+    # Update and install necessary dependencies
+    apt-get update && \
+    apt-get install -y --allow-unauthenticated wget git unzip cmake vim libgl1-mesa-glx dssp build-essential curl
+
+    # DOWNLOAD/INSTALL APBS
+    mkdir /install
+    cd /install
+    git clone https://github.com/Electrostatics/apbs-pdb2pqr
+    cd /install/apbs-pdb2pqr
+    git checkout b3bfeec
+    git submodule init
+    git submodule update
+    cmake -DGET_MSMS=ON apbs
+    make
+    make install
+    cp -r /install/apbs-pdb2pqr/apbs/externals/mesh_routines/msms/msms_i86_64Linux2_2.6.1 /root/msms/
+    
+    # Install pip for Python 3.6
+    curl https://bootstrap.pypa.io/pip/3.6/get-pip.py -o get-pip.py
+    python get-pip.py
+
+    # INSTALL PDB2PQR
+    pip install pdb2pqr
+
+    # DOWNLOAD reduce (for protonation)
+    cd /install
+    git clone https://github.com/rlabduke/reduce.git
+    cd /install/reduce
+    make install
+    mkdir -p /install/reduce/build/reduce
+    cd /install/reduce/build/reduce
+    cmake /install/reduce/reduce_src
+    cd /install/reduce/reduce_src
+    make
+    make install
+
+    # Install python libraries
+    pip3 install matplotlib 
+    pip3 install ipython Biopython sklearn tensorflow==1.12 networkx open3d==0.8.0.0 dask==1.2.2 packaging
+
+    # Install small molecule dependencies
+    pip3 install rdkit-pypi==2021.9.4
+    pip3 install ProDy==2.0
+    pip install openbabel-wheel==3.1.1.7
+
+    # Get an updated het_atm dictionary for reduce
+    cd /install/reduce
+    python2 update_het_dict.py
+
+%environment
+    export MSMS_BIN=/usr/local/bin/msms
+    export APBS_BIN=/usr/local/bin/apbs
+    export MULTIVALUE_BIN=/usr/local/share/apbs/tools/bin/multivalue
+    export PDB2PQR_BIN=/usr/local/bin/pdb2pqr30
+    export REDUCE_HET_DICT=/install/reduce/reduce_wwPDB_het_dict.txt
+
+%runscript
+    exec /bin/bash "$@"
+
+%labels
+    Author MaSIF-neosurf Team
+    Version 1.0
+    Description Singularity image for MaSIF-neosurf - Surface-based protein design for ternary complexes
+
+%help
+    This is a Singularity container for MaSIF-neosurf.
+    
+    To build the image:
+        singularity build masif-neosurf.sif masif-neosurf.def
+    
+    To run interactively:
+        singularity shell --bind $PWD:/home masif-neosurf.sif
+    
+    To execute commands:
+        singularity exec --bind $PWD:/home masif-neosurf.sif <command>
+    
+    Example usage:
+        singularity exec --bind $PWD:/home masif-neosurf.sif ./preprocess_pdb.sh example/1a7x.pdb 1A7X_A -l FKA_B -s example/1a7x_C_FKA.sdf -o example/output/

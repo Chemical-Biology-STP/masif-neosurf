@@ -1,0 +1,451 @@
+{% extends "base.html" %}
+
+{% block title %}Job Details - {{ metadata.job_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.download-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(4px);
+}
+
+.download-modal.active {
+    display: flex;
+}
+
+.download-modal-content {
+    background: white;
+    border-radius: 16px;
+    padding: 3rem 2.5rem;
+    max-width: 480px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.download-modal-spinner {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 1.5rem;
+    border: 4px solid var(--gray-200);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.download-modal h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: 0.75rem;
+}
+
+.download-modal p {
+    color: var(--gray-600);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    margin-bottom: 0.5rem;
+}
+
+.download-modal .warning {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: #FEF3C7;
+    color: #92400E;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    margin-top: 1.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.download-modal .warning svg {
+    flex-shrink: 0;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Job Details: {{ metadata.job_name }}</h2>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin: 1.5rem 0;">
+        <div>
+            <strong>Job ID:</strong><br>
+            <code>{{ metadata.job_id }}</code>
+        </div>
+        <div>
+            <strong>Status:</strong><br>
+            {% if status in ['RUNNING', 'PENDING', 'CONFIGURING'] %}
+                <span class="status-badge status-running">{{ status }}</span>
+            {% elif status in ['COMPLETED'] %}
+                <span class="status-badge status-completed">{{ status }}</span>
+            {% elif status in ['FAILED', 'CANCELLED', 'TIMEOUT', 'NODE_FAIL'] %}
+                <span class="status-badge status-failed">{{ status }}</span>
+            {% else %}
+                <span class="status-badge status-pending">{{ status }}</span>
+            {% endif %}
+        </div>
+        <div>
+            <strong>Submitted:</strong><br>
+            {{ metadata.submitted_at[:19] }}
+        </div>
+    </div>
+    
+    <div style="margin: 1.5rem 0;">
+        <strong>Input Files:</strong>
+        <ul style="margin-left: 2rem; margin-top: 0.5rem;">
+            <li>PDB: {{ metadata.pdb_file }}</li>
+            <li>Chain ID: <code>{{ metadata.chain_id }}</code></li>
+            {% if metadata.ligand_id %}
+            <li>Ligand ID: <code>{{ metadata.ligand_id }}</code></li>
+            <li>SDF: {{ metadata.sdf_file }}</li>
+            {% endif %}
+        </ul>
+    </div>
+    
+    {% if current_user.is_admin %}
+    <div style="margin: 1.5rem 0;">
+        <strong>Command (Admin Only):</strong>
+        <pre>{{ metadata.command }}</pre>
+    </div>
+    {% endif %}
+    
+    <div style="margin-top: 1rem;">
+        <a href="{{ url_for('list_jobs') }}" class="btn btn-secondary">← Back to Jobs</a>
+        <button onclick="location.reload()" class="btn">Refresh Status</button>
+        {% if current_user.is_admin %}
+        <button onclick="window.open('{{ url_for('debug_files', job_uuid=job_uuid) }}', '_blank')" class="btn">Debug Files</button>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="margin: 0;">Output Files</h3>
+        {% if output_files %}
+        <button onclick="downloadAllFiles()" class="btn">
+            📦 Download All Files (ZIP)
+        </button>
+        {% endif %}
+    </div>
+    {% if output_files %}
+    <div id="file-browser" style="font-family: monospace;">
+        <!-- Files will be rendered here by JavaScript -->
+    </div>
+    {% else %}
+    <p style="color: #666; font-style: italic;">
+        {% if status in ['RUNNING', 'PENDING', 'CONFIGURING'] %}
+        Job is still running. Output files will appear here when the job completes.
+        {% elif status in ['COMPLETED'] %}
+        No output files found. The job may have completed without generating output files, or there may be an issue accessing the files.
+        {% elif status in ['FAILED', 'CANCELLED', 'TIMEOUT', 'NODE_FAIL'] %}
+        Job did not complete successfully. No output files available.
+        {% else %}
+        No output files available yet.
+        {% endif %}
+    </p>
+    {% endif %}
+</div>
+
+<style>
+.file-tree {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.file-tree li {
+    padding: 4px 0;
+}
+
+.file-tree .folder {
+    cursor: pointer;
+    user-select: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.file-tree .folder:hover {
+    background-color: #f0f0f0;
+}
+
+.file-tree .folder-icon {
+    display: inline-block;
+    width: 20px;
+    transition: transform 0.2s;
+}
+
+.file-tree .folder-icon.expanded {
+    transform: rotate(90deg);
+}
+
+.file-tree .nested {
+    display: none;
+    padding-left: 24px;
+}
+
+.file-tree .nested.active {
+    display: block;
+}
+
+.file-tree .file-item {
+    padding: 4px 8px 4px 28px;
+    border-radius: 4px;
+}
+
+.file-tree .file-item:hover {
+    background-color: #f0f0f0;
+}
+
+.file-tree .file-item a {
+    text-decoration: none;
+    color: #0066cc;
+}
+
+.file-tree .file-item a:hover {
+    text-decoration: underline;
+}
+</style>
+
+{% if output_files %}
+<div class="card" style="background: #e8f4f8; border-left: 4px solid #0066cc;">
+    <details>
+        <summary style="cursor: pointer; font-weight: 600; font-size: 1.1rem; padding: 0.5rem 0;">
+            💡 Understanding Your Results
+        </summary>
+        <div style="margin-top: 1rem; padding-left: 1rem;">
+            <p style="margin-bottom: 1rem;">Your MaSIF-neosurf job has generated several types of files organized in directories:</p>
+            
+            <div style="margin: 0.5rem 0;">
+                <strong>📂 output/</strong> - Main results with 3D surface meshes (.ply) and predictions (.npy)
+            </div>
+            <div style="margin: 0.5rem 0;">
+                <strong>📂 data_preparation/</strong> - Preprocessed structures (intermediate files)
+            </div>
+            <div style="margin: 0.5rem 0;">
+                <strong>📂 descriptors/</strong> - Surface features and molecular descriptors
+            </div>
+            <div style="margin: 0.5rem 0;">
+                <strong>📂 targets/</strong> - Predicted binding site locations
+            </div>
+            
+            <p style="margin-top: 1rem;">
+                <strong>Visualization:</strong> Use PyMOL, Chimera, or MeshLab to view .ply files. 
+                Use Python with NumPy to analyze .npy arrays.
+            </p>
+            
+            <p style="margin-top: 0.5rem;">
+                <a href="{{ url_for('help_page') }}" style="color: #0066cc; text-decoration: underline;">
+                    📖 View detailed documentation and visualization guide
+                </a>
+            </p>
+        </div>
+    </details>
+</div>
+{% endif %}
+
+{% if current_user.is_admin and logs %}
+<div class="card">
+    <h3>Job Logs (Admin Only)</h3>
+    {% for log_name, log_content in logs.items() %}
+    <div style="margin-bottom: 1.5rem;">
+        <strong>{{ log_name }}:</strong>
+        <pre style="max-height: 400px; overflow-y: auto;">{{ log_content }}</pre>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Download Modal -->
+<div id="downloadModal" class="download-modal">
+    <div class="download-modal-content">
+        <div class="download-modal-spinner"></div>
+        <h3>Preparing Your Download</h3>
+        <p>We're collecting and compressing your files from the HPC cluster.</p>
+        <p>This may take a few moments depending on the file size.</p>
+        <div class="warning">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            Please do not close or refresh this page
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Download all files with modal
+function downloadAllFiles() {
+    const modal = document.getElementById('downloadModal');
+    modal.classList.add('active');
+    
+    // Create hidden iframe for download
+    let iframe = document.getElementById('download-frame');
+    if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.id = 'download-frame';
+        iframe.name = 'download-frame';
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+    }
+    
+    // Trigger download
+    iframe.src = "{{ url_for('download_all_files', job_uuid=job_uuid) }}";
+    
+    // Hide modal after download starts (with fallback)
+    let downloadStarted = false;
+    const checkDownload = setInterval(() => {
+        try {
+            if (iframe.contentWindow.document.readyState === 'complete') {
+                downloadStarted = true;
+            }
+        } catch (e) {
+            // Cross-origin, download likely started
+            downloadStarted = true;
+        }
+        
+        if (downloadStarted) {
+            clearInterval(checkDownload);
+            setTimeout(() => {
+                modal.classList.remove('active');
+            }, 2000);
+        }
+    }, 500);
+    
+    // Fallback: hide modal after 30 seconds
+    setTimeout(() => {
+        clearInterval(checkDownload);
+        modal.classList.remove('active');
+    }, 30000);
+}
+
+// Auto-refresh every 10 seconds if job is running
+{% if status in ['RUNNING', 'PENDING', 'CONFIGURING'] %}
+setTimeout(() => {
+    location.reload();
+}, 10000);
+{% endif %}
+
+{% if output_files %}
+// Build file tree structure
+const files = {{ output_files | tojson }};
+const jobUuid = "{{ job_uuid }}";
+
+function buildFileTree(files) {
+    const tree = {};
+    
+    files.forEach(filePath => {
+        const parts = filePath.split('/');
+        let current = tree;
+        
+        parts.forEach((part, index) => {
+            if (index === parts.length - 1) {
+                // It's a file
+                if (!current._files) current._files = [];
+                current._files.push({ name: part, path: filePath });
+            } else {
+                // It's a folder
+                if (!current[part]) {
+                    current[part] = {};
+                }
+                current = current[part];
+            }
+        });
+    });
+    
+    return tree;
+}
+
+function renderTree(tree, parentElement, level = 0) {
+    const ul = document.createElement('ul');
+    ul.className = 'file-tree';
+    if (level > 0) {
+        ul.className += ' nested';
+    }
+    
+    // Render folders first
+    const folders = Object.keys(tree).filter(key => key !== '_files').sort();
+    folders.forEach(folderName => {
+        const li = document.createElement('li');
+        
+        const folderDiv = document.createElement('div');
+        folderDiv.className = 'folder';
+        folderDiv.innerHTML = `<span class="folder-icon">▶</span> 📁 <strong>${folderName}</strong>`;
+        
+        folderDiv.onclick = function(e) {
+            e.stopPropagation();
+            const icon = this.querySelector('.folder-icon');
+            const nested = this.parentElement.querySelector('.nested');
+            icon.classList.toggle('expanded');
+            nested.classList.toggle('active');
+        };
+        
+        li.appendChild(folderDiv);
+        
+        // Recursively render subfolder contents
+        const subTree = renderTree(tree[folderName], li, level + 1);
+        li.appendChild(subTree);
+        
+        ul.appendChild(li);
+    });
+    
+    // Render files
+    if (tree._files) {
+        tree._files.sort((a, b) => a.name.localeCompare(b.name)).forEach(file => {
+            const li = document.createElement('li');
+            li.className = 'file-item';
+            
+            const downloadUrl = `/download/${jobUuid}/${encodeURIComponent(file.path)}`;
+            li.innerHTML = `📄 <a href="${downloadUrl}">${file.name}</a>`;
+            
+            ul.appendChild(li);
+        });
+    }
+    
+    return ul;
+}
+
+// Build and render the tree
+const tree = buildFileTree(files);
+const browser = document.getElementById('file-browser');
+const renderedTree = renderTree(tree, browser);
+browser.appendChild(renderedTree);
+
+// Expand root level folders by default
+document.querySelectorAll('.file-tree > li > .folder').forEach(folder => {
+    folder.click();
+});
+{% endif %}
+</script>
+{% endblock %}

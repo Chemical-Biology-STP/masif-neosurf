@@ -1,0 +1,351 @@
+{% extends "base.html" %}
+
+{% block title %}Jobs - MaSIF-neosurf{% endblock %}
+
+{% block extra_css %}
+<style>
+.download-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(4px);
+}
+
+.download-modal.active {
+    display: flex;
+}
+
+.download-modal-content {
+    background: white;
+    border-radius: 16px;
+    padding: 3rem 2.5rem;
+    max-width: 480px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.download-modal-spinner {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 1.5rem;
+    border: 4px solid var(--gray-200);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.download-modal h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: 0.75rem;
+}
+
+.download-modal p {
+    color: var(--gray-600);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    margin-bottom: 0.5rem;
+}
+
+.download-modal .warning {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: #FEF3C7;
+    color: #92400E;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    margin-top: 1.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.download-modal .warning svg {
+    flex-shrink: 0;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <div>
+            <h2 style="margin-bottom: 0.25rem;">All Jobs</h2>
+            <p style="color: #666; font-size: 0.875rem;">
+                View and manage all submitted preprocessing jobs
+            </p>
+        </div>
+        <div id="bulk-actions" style="display: none;">
+            <button onclick="downloadSelected()" class="btn" style="padding: 0.75rem 1.5rem;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.5rem;">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Download Selected (<span id="selected-count">0</span>)
+            </button>
+        </div>
+    </div>
+    
+    {% if jobs %}
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 40px;">
+                    <input type="checkbox" id="select-all" onchange="toggleSelectAll(this)" style="cursor: pointer;">
+                </th>
+                <th>Job Name</th>
+                <th>Job ID</th>
+                <th>Status</th>
+                {% if is_admin %}<th>User</th>{% endif %}
+                <th>PDB File</th>
+                <th>Chain ID</th>
+                <th>Submitted</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for job in jobs %}
+            <tr>
+                <td>
+                    <input type="checkbox" class="job-checkbox" data-job-uuid="{{ job.job_uuid }}" data-job-name="{{ job.job_name }}" onchange="updateBulkActions()" style="cursor: pointer;">
+                </td>
+                <td><strong>{{ job.job_name }}</strong></td>
+                <td><code>{{ job.job_id }}</code></td>
+                <td data-job-id="{{ job.job_id }}" data-job-uuid="{{ job.job_uuid }}">
+                    <span class="status-badge status-pending">LOADING...</span>
+                </td>
+                {% if is_admin %}
+                <td>
+                    <small>{{ job.user_email }}</small>
+                </td>
+                {% endif %}
+                <td>{{ job.pdb_file }}</td>
+                <td><code>{{ job.chain_id }}</code></td>
+                <td>{{ job.submitted_at[:19] }}</td>
+                <td>
+                    <a href="{{ url_for('job_details', job_uuid=job.job_uuid) }}" class="btn" style="padding: 0.5rem 1rem; font-size: 0.9rem;">
+                        View Details
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="alert alert-info">
+        No jobs found. <a href="{{ url_for('index') }}" style="color: #0c5460; text-decoration: underline;">Submit your first job</a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Download Modal -->
+<div id="downloadModal" class="download-modal">
+    <div class="download-modal-content">
+        <div class="download-modal-spinner"></div>
+        <h3>Preparing Your Download</h3>
+        <p>We're collecting and compressing your files from the HPC cluster.</p>
+        <p>This may take a few moments depending on the file size.</p>
+        <div class="warning">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            Please do not close or refresh this page
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Store job statuses
+const jobStatuses = {};
+
+// Load job statuses asynchronously
+document.addEventListener('DOMContentLoaded', function() {
+    const statusCells = document.querySelectorAll('[data-job-id]');
+    
+    statusCells.forEach(cell => {
+        const jobId = cell.getAttribute('data-job-id');
+        const jobUuid = cell.getAttribute('data-job-uuid');
+        
+        fetch(`/api/job-status/${jobId}`)
+            .then(response => response.json())
+            .then(data => {
+                const status = data.status;
+                jobStatuses[jobUuid] = status;
+                let badgeClass = 'status-pending';
+                
+                if (['RUNNING', 'PENDING', 'CONFIGURING'].includes(status)) {
+                    badgeClass = 'status-running';
+                } else if (status === 'COMPLETED') {
+                    badgeClass = 'status-completed';
+                } else if (['FAILED', 'CANCELLED', 'TIMEOUT', 'NODE_FAIL'].includes(status)) {
+                    badgeClass = 'status-failed';
+                }
+                
+                cell.innerHTML = `<span class="status-badge ${badgeClass}">${status}</span>`;
+            })
+            .catch(error => {
+                cell.innerHTML = '<span class="status-badge status-pending">ERROR</span>';
+            });
+    });
+});
+
+function toggleSelectAll(checkbox) {
+    const checkboxes = document.querySelectorAll('.job-checkbox');
+    checkboxes.forEach(cb => {
+        cb.checked = checkbox.checked;
+    });
+    updateBulkActions();
+}
+
+function updateBulkActions() {
+    const checkboxes = document.querySelectorAll('.job-checkbox:checked');
+    const count = checkboxes.length;
+    const bulkActions = document.getElementById('bulk-actions');
+    const selectedCount = document.getElementById('selected-count');
+    
+    if (count > 0) {
+        bulkActions.style.display = 'block';
+        selectedCount.textContent = count;
+    } else {
+        bulkActions.style.display = 'none';
+    }
+    
+    // Update select-all checkbox state
+    const allCheckboxes = document.querySelectorAll('.job-checkbox');
+    const selectAllCheckbox = document.getElementById('select-all');
+    selectAllCheckbox.checked = count === allCheckboxes.length && count > 0;
+}
+
+function downloadSelected() {
+    const checkboxes = document.querySelectorAll('.job-checkbox:checked');
+    const jobUuids = Array.from(checkboxes).map(cb => cb.getAttribute('data-job-uuid'));
+    
+    if (jobUuids.length === 0) {
+        alert('Please select at least one job to download');
+        return;
+    }
+    
+    // Check if any selected jobs are not completed
+    const incompleteJobs = jobUuids.filter(uuid => {
+        const status = jobStatuses[uuid];
+        return status && status !== 'COMPLETED';
+    });
+    
+    if (incompleteJobs.length > 0) {
+        if (!confirm(`${incompleteJobs.length} of the selected jobs are not completed yet. Download anyway?`)) {
+            return;
+        }
+    }
+    
+    // Show modal
+    const modal = document.getElementById('downloadModal');
+    modal.classList.add('active');
+    
+    // Disable button
+    const btn = event.target.closest('button');
+    btn.disabled = true;
+    
+    // Create form and submit
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/download-multiple';
+    form.target = 'download-frame';
+    
+    jobUuids.forEach(uuid => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'job_uuids';
+        input.value = uuid;
+        form.appendChild(input);
+    });
+    
+    document.body.appendChild(form);
+    
+    // Create hidden iframe for download
+    let iframe = document.getElementById('download-frame');
+    if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.id = 'download-frame';
+        iframe.name = 'download-frame';
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+    }
+    
+    // Listen for download completion
+    let downloadStarted = false;
+    const checkDownload = setInterval(() => {
+        try {
+            if (iframe.contentWindow.document.readyState === 'complete') {
+                downloadStarted = true;
+            }
+        } catch (e) {
+            // Cross-origin, download likely started
+            downloadStarted = true;
+        }
+        
+        if (downloadStarted) {
+            clearInterval(checkDownload);
+            setTimeout(() => {
+                modal.classList.remove('active');
+                btn.disabled = false;
+                document.body.removeChild(form);
+            }, 2000);
+        }
+    }, 500);
+    
+    // Fallback: hide modal after 30 seconds
+    setTimeout(() => {
+        clearInterval(checkDownload);
+        modal.classList.remove('active');
+        btn.disabled = false;
+        if (document.body.contains(form)) {
+            document.body.removeChild(form);
+        }
+    }, 30000);
+    
+    form.submit();
+}
+
+// Auto-refresh every 30 seconds
+setTimeout(() => {
+    location.reload();
+}, 30000);
+</script>
+<style>
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+</style>
+{% endblock %}

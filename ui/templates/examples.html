@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Example Jobs - MaSIF-neosurf{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>📚 Example Jobs</h2>
+    <p style="margin-bottom: 2rem; color: #666;">
+        Run pre-configured example jobs to test the system or learn how to use MaSIF-neosurf.
+    </p>
+    
+    <div id="alert-container"></div>
+    
+    <div class="example-grid">
+        <div class="example-card">
+            <h3>Example 1: Basic Preprocessing</h3>
+            <p><strong>PDB:</strong> 1a7x.pdb</p>
+            <p><strong>Chain:</strong> 1A7X_A</p>
+            <p><strong>Description:</strong> Simple protein preprocessing without ligand</p>
+            <button onclick="submitExample('basic')" class="btn">
+                Run Example
+            </button>
+        </div>
+        
+        <div class="example-card">
+            <h3>Example 2: With Ligand</h3>
+            <p><strong>PDB:</strong> 1a7x.pdb</p>
+            <p><strong>Chain:</strong> 1A7X_A</p>
+            <p><strong>Ligand:</strong> FKA_B</p>
+            <p><strong>SDF:</strong> 1a7x_C_FKA.sdf</p>
+            <p><strong>Description:</strong> Protein preprocessing with ligand binding site</p>
+            <button onclick="submitExample('ligand')" class="btn">
+                Run Example
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+.example-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+.example-card {
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 1.5rem;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.example-card:hover {
+    border-color: #667eea;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.example-card h3 {
+    margin-bottom: 1rem;
+    color: #667eea;
+}
+
+.example-card p {
+    margin: 0.5rem 0;
+    font-size: 0.95rem;
+}
+
+.example-card button {
+    margin-top: 1rem;
+    width: 100%;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function submitExample(type) {
+    console.log('submitExample called with type:', type);
+    const alertContainer = document.getElementById('alert-container');
+    alertContainer.innerHTML = '<div class="alert alert-info">Submitting example job...</div>';
+    
+    try {
+        console.log('Sending request to /submit-example');
+        const response = await fetch('/submit-example', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ example_type: type })
+        });
+        
+        console.log('Response status:', response.status);
+        const data = await response.json();
+        console.log('Response data:', data);
+        
+        if (response.ok) {
+            alertContainer.innerHTML = `
+                <div class="alert alert-success">
+                    <strong>Success!</strong> ${data.message}<br>
+                    <a href="/job/${data.job_uuid}" style="color: #155724; text-decoration: underline;">View job details</a>
+                </div>
+            `;
+            // Scroll to alert
+            alertContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } else {
+            alertContainer.innerHTML = `
+                <div class="alert alert-error">
+                    <strong>Error:</strong> ${data.error}
+                </div>
+            `;
+            alertContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    } catch (error) {
+        console.error('Error submitting example:', error);
+        alertContainer.innerHTML = `
+            <div class="alert alert-error">
+                <strong>Error:</strong> ${error.message}
+            </div>
+        `;
+        alertContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+}
+</script>
+{% endblock %}

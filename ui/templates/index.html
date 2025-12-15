@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Submit Job - MaSIF-neosurf{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto;">
+    <div class="card">
+        <div class="card-header">
+            <h2>Submit Preprocessing Job</h2>
+            <p>Upload your PDB file and configure preprocessing parameters for HPC cluster processing</p>
+        </div>
+        
+        <div id="alert-container"></div>
+        
+        <form id="submit-form" enctype="multipart/form-data">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label for="job_name">Job Name (optional)</label>
+                    <input type="text" id="job_name" name="job_name" placeholder="e.g., my_protein_analysis">
+                    <div class="help-text">A unique identifier will be added automatically</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="pdb_file">PDB File *</label>
+                    <input type="file" id="pdb_file" name="pdb_file" accept=".pdb" required>
+                    <div class="help-text">Protein structure file in PDB format</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="chain_id">Chain ID *</label>
+                    <input type="text" id="chain_id" name="chain_id" placeholder="e.g., A or 1A7X_A" required maxlength="10">
+                    <div class="help-text">Chain identifier to process</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="ligand_id">Ligand ID (optional)</label>
+                    <input type="text" id="ligand_id" name="ligand_id" placeholder="e.g., FKA_B" maxlength="20">
+                    <div class="help-text">Ligand identifier if processing with ligand</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="sdf_file">SDF File (optional)</label>
+                    <input type="file" id="sdf_file" name="sdf_file" accept=".sdf">
+                    <div class="help-text">Ligand structure file (required if Ligand ID is provided)</div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+                <button type="submit" class="btn" id="submit-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    Submit Job
+                </button>
+                <a href="{{ url_for('examples') }}" class="btn btn-outline">View Examples</a>
+            </div>
+        </form>
+    </div>
+    
+    <div class="card" style="background: var(--gray-50); border: 1px solid var(--gray-200);">
+        <h3 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 1rem; color: var(--gray-900);">Quick Start Guide</h3>
+        
+        <div style="display: grid; gap: 1.5rem;">
+            <div>
+                <div style="font-weight: 600; color: var(--gray-700); margin-bottom: 0.5rem;">
+                    <span style="display: inline-block; width: 24px; height: 24px; background: var(--primary); color: white; border-radius: 50%; text-align: center; line-height: 24px; font-size: 0.75rem; margin-right: 0.5rem;">1</span>
+                    Without Ligand
+                </div>
+                <div style="margin-left: 2rem; font-size: 0.875rem; color: var(--gray-600);">
+                    <div>• PDB File: <code style="background: white; padding: 0.125rem 0.375rem; border-radius: 4px; font-size: 0.8125rem;">1a7x.pdb</code></div>
+                    <div>• Chain ID: <code style="background: white; padding: 0.125rem 0.375rem; border-radius: 4px; font-size: 0.8125rem;">1A7X_A</code></div>
+                </div>
+            </div>
+            
+            <div>
+                <div style="font-weight: 600; color: var(--gray-700); margin-bottom: 0.5rem;">
+                    <span style="display: inline-block; width: 24px; height: 24px; background: var(--primary); color: white; border-radius: 50%; text-align: center; line-height: 24px; font-size: 0.75rem; margin-right: 0.5rem;">2</span>
+                    With Ligand
+                </div>
+                <div style="margin-left: 2rem; font-size: 0.875rem; color: var(--gray-600);">
+                    <div>• PDB File: <code style="background: white; padding: 0.125rem 0.375rem; border-radius: 4px; font-size: 0.8125rem;">1a7x.pdb</code></div>
+                    <div>• Chain ID: <code style="background: white; padding: 0.125rem 0.375rem; border-radius: 4px; font-size: 0.8125rem;">1A7X_A</code></div>
+                    <div>• Ligand ID: <code style="background: white; padding: 0.125rem 0.375rem; border-radius: 4px; font-size: 0.8125rem;">FKA_B</code></div>
+                    <div>• SDF File: <code style="background: white; padding: 0.125rem 0.375rem; border-radius: 4px; font-size: 0.8125rem;">1a7x_C_FKA.sdf</code></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('submit-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const submitBtn = document.getElementById('submit-btn');
+    const alertContainer = document.getElementById('alert-container');
+    
+    // Disable button and show loading
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite;">
+            <circle cx="12" cy="12" r="10"></circle>
+        </svg>
+        Submitting...
+    `;
+    alertContainer.innerHTML = '';
+    
+    try {
+        const formData = new FormData(e.target);
+        
+        const response = await fetch('/submit', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alertContainer.innerHTML = `
+                <div class="alert alert-success">
+                    <strong>Success!</strong> ${data.message}<br>
+                    <a href="/job/${data.job_uuid}" style="color: #065F46; font-weight: 600; text-decoration: underline;">View job details →</a>
+                </div>
+            `;
+            e.target.reset();
+        } else {
+            alertContainer.innerHTML = `
+                <div class="alert alert-error">
+                    <strong>Error:</strong> ${data.error}
+                </div>
+            `;
+        }
+    } catch (error) {
+        alertContainer.innerHTML = `
+            <div class="alert alert-error">
+                <strong>Error:</strong> ${error.message}
+            </div>
+        `;
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            Submit Job
+        `;
+    }
+});
+</script>
+<style>
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+</style>
+{% endblock %}

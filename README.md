@@ -25,7 +25,7 @@ Molecular recognition events between proteins drive biological processes in livi
 
 ## Method overview
 
-![MaSIF-neosurf overview and pipeline](method.png)
+![MaSIF-neosurf overview and pipeline](docs/method.png)
 
 ## System requirements
 ### Hardware
@@ -52,41 +52,71 @@ The following is the list of required libraries and programs, as well as the ver
 * [OpenBabel](https://github.com/openbabel/openbabel) (3.1.1.7). For handling small molecules, especially the conversion into MOL2 files for APBS.
 * [ProDy](https://github.com/prody/ProDy) (2.0). For handling small molecules, especially the ligand extraction from a PDB.
 
-## Installation with Docker
-MaSIF is written in Python and does not require compilation. Since MaSIF relies on a few external programs (MSMS, APBS) and libraries (PyMesh, Tensorflow, Scipy, Open3D), we strongly recommend you use the Dockerfile and Docker container. Setting up the environment should take a few minutes only. 
+## Installation
+
+MaSIF-neosurf can be installed in several ways depending on your environment:
+
+### Docker (Recommended for Development)
 ```bash
 git clone https://github.com/LPDI-EPFL/masif-neosurf.git
 cd masif-neosurf
-docker build . -t masif-neosurf 
+docker build -f deployment/docker/Dockerfile . -t masif-neosurf 
 docker run -it -v $PWD:/home/$(basename $PWD) masif-neosurf 
 ```
+
+### Singularity (Recommended for HPC)
+```bash
+cd deployment/singularity
+singularity build masif-neosurf.sif masif-neosurf.def
+singularity exec masif-neosurf.sif masif-preprocess input.pdb CHAIN_ID
+```
+See [SINGULARITY_USAGE.md](docs/SINGULARITY_USAGE.md) for details.
+
+### EasyBuild (For HPC Module Systems)
+```bash
+cd deployment/easybuild
+bash install_masif_easybuild.sh
+module load MaSIF-neosurf/1.0
+```
+See [EASYBUILD_INSTALLATION.md](docs/EASYBUILD_INSTALLATION.md) for details.
+
+### Web Interface (For Non-Command-Line Users)
+A user-friendly web interface is available for submitting jobs to HPC clusters:
+```bash
+cd ui
+pixi install
+pixi run python app.py
+```
+See [ui/README.md](ui/README.md) for details.
 
 ## Preprocess a PDB file
 
 Before we can search for complementary binding sites/seeds, we need to triangulate the molecular surface and compute 
 the initial surface features. The script `preprocess_pdb.sh` takes two required positional arguments: the PDB file and a 
 definition of the chain(s) that will be included.
+
 If a small molecule is part of the molecular surface, we need to tell MaSIF-neosurf where to find it in the PDB file 
 (three letter code + chain) using the `-l` flag. Optionally, we can also provide an SDF file with the `-s` flag that 
 will be used to infer the correct connectivity information (i.e. bond types). This SDF file can be downloaded from the 
 PDB website for example.
+
 Finally, we must specify an output directory with the `-o` flag, in which all the preprocessed files will be saved.
 
-
 ```bash
+cd deployment/scripts
 chmod +x ./preprocess_pdb.sh
 
 # with ligand
-./preprocess_pdb.sh example/1a7x.pdb 1A7X_A -l FKA_B -s example/1a7x_C_FKA.sdf -o example/output/
+./preprocess_pdb.sh ../../examples/1a7x.pdb 1A7X_A -l FKA_B -s ../../examples/1a7x_C_FKA.sdf -o output/
 
 # without ligand
-./preprocess_pdb.sh example/1a7x.pdb 1A7X_A -o example/output/
+./preprocess_pdb.sh ../../examples/1a7x.pdb 1A7X_A -o output/
 ```
 
 ## PyMOL plugin
 
-The [PyMOL plugin](masif_pymol_plugin.py) can be used to visualize preprocessed surface files (.ply file extension).
-To install it, open the plugin manager in PyMOL, select `Install New Plugin -> Install from local file` and choose the `masif_pymol_plugin.py` file.
+The [PyMOL plugin](src/masif_pymol_plugin.py) can be used to visualize preprocessed surface files (.ply file extension).
+To install it, open the plugin manager in PyMOL, select `Install New Plugin -> Install from local file` and choose the `src/masif_pymol_plugin.py` file.
 Once installed you can load MaSIF surface files in PyMOL with the following command:
 ```bash
 loadply 1ABC.ply
@@ -108,6 +138,28 @@ For more details on the seed refinement and grafting procedure, please consult t
 ## License
 
 MaSIF-seed is released under an [Apache v2.0 license](LICENSE)
+
+## Project Structure
+
+```
+masif-neosurf/
+├── masif/                  # Core MaSIF codebase
+├── src/                    # Source code and utilities
+├── ui/                     # Web interface for HPC job submission
+├── deployment/             # Deployment files (Docker, Singularity, EasyBuild)
+├── docs/                   # Documentation
+├── examples/               # Example input files
+├── computational_benchmark/# Binder recovery benchmark
+├── masif_seed_search/     # Seed search implementation
+└── rosetta_scripts/       # Seed refinement and grafting
+```
+
+## Documentation
+
+- [Installation Guides](docs/) - EasyBuild, Singularity, HPC usage
+- [Web Interface](ui/README.md) - User-friendly job submission
+- [Deployment](deployment/README.md) - Docker, Singularity, EasyBuild
+- [Examples](examples/README.md) - Test files and usage examples
 
 ## Reference
 

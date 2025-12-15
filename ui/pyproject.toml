@@ -1,0 +1,33 @@
+[project]
+name = "masif-neosurf-ui"
+version = "0.1.0"
+description = "Web interface for MaSIF-neosurf on HPC"
+requires-python = ">= 3.11"
+dependencies = [
+    "flask>=3.0.0",
+    "werkzeug>=3.0.1",
+    "paramiko>=3.4.0",
+    "python-dotenv>=1.0.0",
+    "flask-login>=0.6.3",
+]
+
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling"]
+
+[tool.pixi.project]
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[tool.pixi.dependencies]
+python = ">=3.11"
+flask = ">=3.0.0"
+werkzeug = ">=3.0.1"
+paramiko = ">=3.4.0"
+python-dotenv = ">=1.0.0"
+flask-login = ">=0.6.3"
+
+[tool.pixi.tasks]
+test-ssh = { cmd = "python test_ssh_connection.py" }
+dev = { cmd = "python app.py" }
+prod = { cmd = "gunicorn -w 4 -b 0.0.0.0:5000 app:app" }

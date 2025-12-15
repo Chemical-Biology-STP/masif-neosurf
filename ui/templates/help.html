@@ -1,0 +1,652 @@
+{% extends "base.html" %}
+
+{% block title %}Help & Documentation{% endblock %}
+
+{% block extra_css %}
+<style>
+    .help-nav {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+    }
+    
+    .help-nav h3 {
+        margin-top: 0;
+        font-size: 1.1rem;
+        color: #667eea;
+    }
+    
+    .help-nav ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .help-nav li {
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .help-nav li:last-child {
+        border-bottom: none;
+    }
+    
+    .help-nav a {
+        color: #555;
+        text-decoration: none;
+        display: block;
+        transition: color 0.2s, padding-left 0.2s;
+    }
+    
+    .help-nav a:hover {
+        color: #667eea;
+        padding-left: 0.5rem;
+    }
+    
+    .help-section {
+        scroll-margin-top: 20px;
+    }
+    
+    .collapsible-section {
+        margin-bottom: 1rem;
+    }
+    
+    .collapsible-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1rem 1.5rem;
+        cursor: pointer;
+        border-radius: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: transform 0.2s;
+        user-select: none;
+    }
+    
+    .collapsible-header:hover {
+        transform: translateX(5px);
+    }
+    
+    .collapsible-header h3 {
+        margin: 0;
+        font-size: 1.2rem;
+    }
+    
+    .collapsible-icon {
+        font-size: 1.5rem;
+        transition: transform 0.3s;
+    }
+    
+    .collapsible-icon.open {
+        transform: rotate(180deg);
+    }
+    
+    .collapsible-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease-out;
+        background: white;
+        border-radius: 0 0 8px 8px;
+    }
+    
+    .collapsible-content.open {
+        max-height: 5000px;
+        transition: max-height 0.5s ease-in;
+    }
+    
+    .collapsible-inner {
+        padding: 1.5rem;
+    }
+    
+    .info-box {
+        background: #f8f9fa;
+        border-left: 4px solid #667eea;
+        padding: 1rem;
+        margin: 1rem 0;
+        border-radius: 4px;
+    }
+    
+    .highlight-box {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        border: 2px solid #667eea;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        border-radius: 8px;
+    }
+    
+    .icon-list {
+        list-style: none;
+        padding: 0;
+    }
+    
+    .icon-list li {
+        padding: 0.5rem 0;
+        padding-left: 2rem;
+        position: relative;
+    }
+    
+    .icon-list li:before {
+        content: "✓";
+        position: absolute;
+        left: 0;
+        color: #667eea;
+        font-weight: bold;
+        font-size: 1.2rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>📚 MaSIF-neosurf Help & Documentation</h2>
+    <p>Welcome to the MaSIF-neosurf web interface! This guide will help you understand how to use the tool and interpret your results.</p>
+</div>
+
+<!-- Quick Navigation -->
+<div class="help-nav">
+    <h3>📑 Quick Navigation</h3>
+    <ul>
+        <li><a href="#workflow">🎯 Complete Workflow Example</a></li>
+        <li><a href="#getting-started">🚀 Getting Started</a></li>
+        <li><a href="#output-files">📁 Understanding Output Files</a></li>
+        <li><a href="#visualization">🔬 Visualizing Results</a></li>
+        <li><a href="#about">🔬 About MaSIF-neosurf</a></li>
+        <li><a href="#faq">❓ Common Questions</a></li>
+        <li><a href="#resources">📖 Additional Resources</a></li>
+    </ul>
+</div>
+
+<!-- Complete Workflow Example -->
+<div class="collapsible-section help-section" id="workflow">
+    <div class="collapsible-header" onclick="toggleSection(this)">
+        <h3>🎯 Complete Workflow: Evaluating Your Designed Ligand</h3>
+        <span class="collapsible-icon">▼</span>
+    </div>
+    <div class="collapsible-content open">
+        <div class="collapsible-inner">
+            <div class="highlight-box">
+                <h4 style="margin-top: 0;">Use Case: Testing if Your Ligand Creates a Useful Neosurface</h4>
+                <p>You've designed a small molecule ligand to bind at a protein-protein interface. Now you want to know: <strong>Does this ligand create a neosurface that could be targeted for protein design?</strong></p>
+            </div>
+            
+            <h4>Step-by-Step Workflow</h4>
+            
+            <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin: 1rem 0; border-left: 4px solid #667eea;">
+                <h5 style="margin-top: 0; color: #667eea;">Step 1: Prepare Your Files</h5>
+                <p><strong>What you need:</strong></p>
+                <ul class="icon-list">
+                    <li><strong>PDB file:</strong> Your protein structure (with or without the ligand already docked)</li>
+                    <li><strong>SDF file:</strong> Your designed ligand structure in SDF format</li>
+                    <li><strong>Chain ID:</strong> The protein chain you're analyzing (e.g., "A", "1A7X_A")</li>
+                    <li><strong>Ligand ID:</strong> The residue name/ID for your ligand (e.g., "LIG", "FKA_B")</li>
+                </ul>
+                <div class="info-box" style="margin-top: 1rem;">
+                    <strong>💡 Tip:</strong> If your ligand isn't already in the PDB file, that's okay! MaSIF-neosurf will use the SDF file to analyze the neosurface.
+                </div>
+            </div>
+            
+            <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin: 1rem 0; border-left: 4px solid #764ba2;">
+                <h5 style="margin-top: 0; color: #764ba2;">Step 2: Submit Your Job</h5>
+                <ol style="line-height: 1.8;">
+                    <li>Go to <a href="{{ url_for('index') }}" style="color: #764ba2; font-weight: 600;">Submit Job</a> page</li>
+                    <li>Upload your <strong>PDB file</strong></li>
+                    <li>Enter the <strong>Chain ID</strong> (the protein chain where your ligand binds)</li>
+                    <li>Enter the <strong>Ligand ID</strong></li>
+                    <li>Upload your <strong>SDF file</strong> containing the ligand structure</li>
+                    <li>Give your job a descriptive name (e.g., "MyLigand_ProteinA_test")</li>
+                    <li>Click <strong>Submit</strong></li>
+                </ol>
+                <p style="margin-top: 1rem;">⏱️ Your job will typically complete in <strong>5-30 minutes</strong>. You'll receive an email notification.</p>
+            </div>
+            
+            <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin: 1rem 0; border-left: 4px solid #667eea;">
+                <h5 style="margin-top: 0; color: #667eea;">Step 3: Review Your Results</h5>
+                <p>Once your job completes:</p>
+                <ol style="line-height: 1.8;">
+                    <li>Go to <a href="{{ url_for('list_jobs') }}" style="color: #667eea; font-weight: 600;">My Jobs</a></li>
+                    <li>Click on your completed job</li>
+                    <li>You'll see the job status and output files organized by folder</li>
+                    <li>Click <strong>"Download All Files (ZIP)"</strong> to get everything</li>
+                </ol>
+            </div>
+            
+            <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin: 1rem 0; border-left: 4px solid #764ba2;">
+                <h5 style="margin-top: 0; color: #764ba2;">Step 4: Visualize the Neosurface</h5>
+                <ol style="line-height: 1.8;">
+                    <li><strong>Extract</strong> the downloaded ZIP file</li>
+                    <li><strong>Open PyMOL</strong> (or ChimeraX/MeshLab)</li>
+                    <li><strong>Load your original PDB</strong>: File → Open → select your PDB file</li>
+                    <li><strong>Load the neosurface</strong>: File → Open → navigate to <code>output/</code> folder → select the <code>.ply</code> file</li>
+                    <li><strong>Examine the surface</strong>: Look for regions where the ligand creates new surface features</li>
+                </ol>
+                <div class="info-box" style="margin-top: 1rem;">
+                    <strong>💡 What to look for:</strong> The <code>.ply</code> files show the molecular surface including your ligand. Look for exposed surface patches created by the protein-ligand complex.
+                </div>
+            </div>
+            
+            <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin: 1rem 0; border-left: 4px solid #667eea;">
+                <h5 style="margin-top: 0; color: #667eea;">Step 5: Interpret the Results</h5>
+                <p><strong>Key questions to answer:</strong></p>
+                <ul class="icon-list">
+                    <li><strong>Surface area:</strong> Does your ligand create a substantial neosurface? (Look at the <code>output/</code> files)</li>
+                    <li><strong>Surface features:</strong> Are there distinct geometric and chemical features? (Check <code>descriptors/</code> folder)</li>
+                    <li><strong>Binding sites:</strong> Does MaSIF predict potential binding sites on the neosurface? (See <code>targets/</code> folder)</li>
+                    <li><strong>Interface quality:</strong> Is the neosurface well-defined and accessible?</li>
+                </ul>
+            </div>
+            
+            <div style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); padding: 1.5rem; border-radius: 8px; margin: 1.5rem 0; border: 2px solid #667eea;">
+                <h5 style="margin-top: 0; color: #667eea;">Step 6: Make Your Decision</h5>
+                <p><strong>Good neosurface indicators:</strong></p>
+                <ul class="icon-list">
+                    <li>Ligand contributes 10-15% or more of the total surface area</li>
+                    <li>Clear geometric features (pockets, grooves, protrusions)</li>
+                    <li>Distinct chemical properties (hydrophobic patches, charged regions)</li>
+                    <li>MaSIF predicts high interface propensity in the <code>targets/</code> folder</li>
+                </ul>
+                <p style="margin-top: 1rem;"><strong>If your ligand creates a good neosurface:</strong> It's a promising candidate for designing protein binders!</p>
+                <p><strong>If not:</strong> Consider modifying your ligand design to create more distinct surface features.</p>
+            </div>
+            
+            <div class="info-box">
+                <h5 style="margin-top: 0;">🔄 Iterative Design</h5>
+                <p>Use this workflow iteratively:</p>
+                <ol style="line-height: 1.8; padding-left: 1.5rem;">
+                    <li>Design a ligand variant</li>
+                    <li>Run MaSIF-neosurf analysis</li>
+                    <li>Evaluate the neosurface quality</li>
+                    <li>Refine your ligand design</li>
+                    <li>Repeat until you achieve an optimal neosurface</li>
+                </ol>
+            </div>
+            
+            <div style="margin-top: 1.5rem; padding: 1rem; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                <strong>❓ Questions about the platform or your results?</strong><br>
+                Contact the Chemical Biology STP's computational chemists, Yew Mun (<a href="mailto:yewmun.yip@crick.ac.uk">yewmun.yip@crick.ac.uk</a>) and Dani (<a href="mailto:daniella.hares@crick.ac.uk">daniella.hares@crick.ac.uk</a>) for assistance.
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Getting Started Section -->
+<div class="collapsible-section help-section" id="getting-started">
+    <div class="collapsible-header" onclick="toggleSection(this)">
+        <h3>🚀 Getting Started</h3>
+        <span class="collapsible-icon">▼</span>
+    </div>
+    <div class="collapsible-content open">
+        <div class="collapsible-inner">
+            <div class="highlight-box">
+                <h4 style="margin-top: 0;">What is MaSIF-neosurf?</h4>
+                <p>MaSIF-neosurf is a computational strategy for designing proteins that target <strong>neosurfaces</strong> - surfaces arising from protein-ligand complexes. It uses surface-based deep learning to identify potential binding sites.</p>
+            </div>
+            
+            <h4>Submitting a Job</h4>
+            <ol style="line-height: 1.8; padding-left: 1.5rem;">
+                <li><strong>PDB File:</strong> Upload your protein structure file (required)</li>
+                <li><strong>Chain ID:</strong> Specify the protein chain to analyze (e.g., "1A7X_A")</li>
+                <li><strong>Ligand (Optional):</strong> If analyzing a protein-ligand complex:
+                    <ul style="padding-left: 1.5rem;">
+                        <li>Provide the ligand ID (e.g., "FKA_B")</li>
+                        <li>Upload the corresponding SDF file</li>
+                    </ul>
+                </li>
+                <li><strong>Job Name:</strong> Give your job a descriptive name for easy identification</li>
+            </ol>
+            
+            <div class="info-box">
+                <h4 style="margin-top: 0;">💡 Try the Examples First!</h4>
+                <p>New to MaSIF-neosurf? Start with our pre-configured examples:</p>
+                <ul style="padding-left: 1.5rem;">
+                    <li><strong>Basic Example:</strong> Analyzes protein structure without ligand</li>
+                    <li><strong>Ligand Example:</strong> Analyzes protein-ligand complex (1A7X with FKA ligand)</li>
+                </ul>
+                <p><a href="{{ url_for('examples') }}" style="color: #667eea; font-weight: 600;">→ Go to Examples Page</a></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Output Files Section -->
+<div class="collapsible-section help-section" id="output-files">
+    <div class="collapsible-header" onclick="toggleSection(this)">
+        <h3>📁 Understanding Output Files</h3>
+        <span class="collapsible-icon">▼</span>
+    </div>
+    <div class="collapsible-content">
+        <div class="collapsible-inner">
+            <p>Your job results are organized into several directories. Click each to learn more:</p>
+            
+            <details style="margin: 1rem 0; padding: 1rem; background: #f5f5f5; border-radius: 4px; cursor: pointer;">
+                <summary style="font-weight: 600; font-size: 1.1rem; padding: 0.5rem;">📂 output/ - Main Results</summary>
+                <div style="padding: 1rem 0;">
+                    <p><strong>Purpose:</strong> Main output directory with surface representations</p>
+                    <ul style="padding-left: 1.5rem;">
+                        <li><strong>.ply files:</strong> 3D surface mesh files (visualize in PyMOL, Chimera, or MeshLab)</li>
+                        <li><strong>.npy files:</strong> NumPy arrays containing surface features and predictions</li>
+                    </ul>
+                    <div class="info-box">
+                        <strong>💡 Start here!</strong> These are your primary results for visualization and analysis.
+                    </div>
+                </div>
+            </details>
+            
+            <details style="margin: 1rem 0; padding: 1rem; background: #f5f5f5; border-radius: 4px; cursor: pointer;">
+                <summary style="font-weight: 600; font-size: 1.1rem; padding: 0.5rem;">📂 descriptors/ - Surface Features</summary>
+                <div style="padding: 1rem 0;">
+                    <p><strong>Purpose:</strong> Computed molecular surface descriptors</p>
+                    <ul style="padding-left: 1.5rem;">
+                        <li><strong>Feature files:</strong> Geometric and chemical properties of the surface</li>
+                        <li><strong>.npy arrays:</strong> Numerical descriptors used by the neural network</li>
+                    </ul>
+                    <p><strong>Use case:</strong> Advanced users can analyze these features for detailed surface characterization.</p>
+                </div>
+            </details>
+            
+            <details style="margin: 1rem 0; padding: 1rem; background: #f5f5f5; border-radius: 4px; cursor: pointer;">
+                <summary style="font-weight: 600; font-size: 1.1rem; padding: 0.5rem;">📂 targets/ - Binding Predictions</summary>
+                <div style="padding: 1rem 0;">
+                    <p><strong>Purpose:</strong> Target binding site predictions</p>
+                    <ul style="padding-left: 1.5rem;">
+                        <li><strong>Prediction scores:</strong> Likelihood of binding at different surface locations</li>
+                        <li><strong>Coordinate files:</strong> Locations of predicted binding sites</li>
+                    </ul>
+                    <p><strong>Use case:</strong> These files identify where your protein might bind to the target surface.</p>
+                </div>
+            </details>
+            
+            <details style="margin: 1rem 0; padding: 1rem; background: #f5f5f5; border-radius: 4px; cursor: pointer;">
+                <summary style="font-weight: 600; font-size: 1.1rem; padding: 0.5rem;">📂 data_preparation/ - Intermediate Files</summary>
+                <div style="padding: 1rem 0;">
+                    <p><strong>Purpose:</strong> Contains preprocessed structural data</p>
+                    <ul style="padding-left: 1.5rem;">
+                        <li><strong>.pdb files:</strong> Cleaned and processed protein structures</li>
+                        <li><strong>.xyzrn files:</strong> Atomic coordinates with radius and normal vectors</li>
+                    </ul>
+                    <p><strong>Use case:</strong> These are intermediate processing steps. Most users won't need to examine these directly.</p>
+                </div>
+            </details>
+        </div>
+    </div>
+</div>
+
+<!-- Visualization Section -->
+<div class="collapsible-section help-section" id="visualization">
+    <div class="collapsible-header" onclick="toggleSection(this)">
+        <h3>🔬 Visualizing Results (No Coding Required!)</h3>
+        <span class="collapsible-icon">▼</span>
+    </div>
+    <div class="collapsible-content">
+        <div class="collapsible-inner">
+            <div class="highlight-box">
+                <h4 style="margin-top: 0;">📥 First: Download Your Results</h4>
+                <p>On your job details page, click <strong>"Download All Files (ZIP)"</strong> to get all your results in one package. Extract the ZIP file on your computer.</p>
+            </div>
+            
+            <h4>Recommended Visualization Software (All GUI-based)</h4>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin: 1.5rem 0;">
+                <div style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); padding: 1.5rem; border-radius: 8px; border: 2px solid #667eea;">
+                    <h5 style="margin-top: 0; color: #667eea;">⭐ PyMOL (Recommended)</h5>
+                    <p><strong>Best for:</strong> Professional molecular visualization</p>
+                    <p><strong>How to use:</strong></p>
+                    <ol style="line-height: 1.8; font-size: 0.95rem;">
+                        <li>Open PyMOL application</li>
+                        <li>Go to <strong>File → Open</strong></li>
+                        <li>Navigate to your <code>output/</code> folder</li>
+                        <li>Select and open <code>.ply</code> files</li>
+                        <li>Use the GUI to rotate, zoom, and color the surface</li>
+                    </ol>
+                    <p style="margin-top: 1rem;"><a href="https://pymol.org/" target="_blank" style="color: #667eea;">→ Download PyMOL</a></p>
+                </div>
+                
+                <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #764ba2;">
+                    <h5 style="margin-top: 0;">🔶 UCSF ChimeraX</h5>
+                    <p><strong>Best for:</strong> Advanced structural analysis with easy-to-use interface</p>
+                    <p><strong>How to use:</strong></p>
+                    <ol style="line-height: 1.8; font-size: 0.95rem;">
+                        <li>Launch ChimeraX</li>
+                        <li>Drag and drop <code>.ply</code> files into the window</li>
+                        <li>Or use <strong>File → Open</strong></li>
+                        <li>Use mouse to interact with 3D structure</li>
+                        <li>Right-click for display options</li>
+                    </ol>
+                    <p style="margin-top: 1rem;"><a href="https://www.cgl.ucsf.edu/chimerax/" target="_blank" style="color: #764ba2;">→ Download ChimeraX</a></p>
+                </div>
+                
+                <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #667eea;">
+                    <h5 style="margin-top: 0;">🔸 MeshLab</h5>
+                    <p><strong>Best for:</strong> Simple 3D mesh viewing (Free & Open Source)</p>
+                    <p><strong>How to use:</strong></p>
+                    <ol style="line-height: 1.8; font-size: 0.95rem;">
+                        <li>Open MeshLab</li>
+                        <li>Click <strong>File → Import Mesh</strong></li>
+                        <li>Select <code>.ply</code> files from <code>output/</code></li>
+                        <li>Use toolbar buttons to change view</li>
+                        <li>Examine surface geometry visually</li>
+                    </ol>
+                    <p style="margin-top: 1rem;"><a href="https://www.meshlab.net/" target="_blank" style="color: #667eea;">→ Download MeshLab</a></p>
+                </div>
+            </div>
+            
+            <div class="info-box" style="margin-top: 1.5rem;">
+                <h4 style="margin-top: 0;">💡 Quick Start Guide</h4>
+                <ol style="line-height: 1.8; padding-left: 1.5rem;">
+                    <li><strong>Download</strong> your job results as a ZIP file</li>
+                    <li><strong>Extract</strong> the ZIP to a folder on your computer</li>
+                    <li><strong>Install</strong> one of the visualization tools above (PyMOL recommended)</li>
+                    <li><strong>Open</strong> the <code>.ply</code> files from the <code>output/</code> folder</li>
+                    <li><strong>Explore</strong> your protein surface in 3D!</li>
+                </ol>
+            </div>
+            
+            <details style="margin: 1.5rem 0;">
+                <summary style="font-weight: 600; font-size: 1.1rem; padding: 0.5rem; cursor: pointer; background: #f0f0f0; border-radius: 4px;">
+                    🎥 Need Help Getting Started?
+                </summary>
+                <div style="margin-top: 1rem;">
+                    <p>If you're new to molecular visualization:</p>
+                    <ul class="icon-list">
+                        <li>PyMOL has extensive <a href="https://pymolwiki.org/index.php/Practical_Pymol_for_Beginners" target="_blank">beginner tutorials</a></li>
+                        <li>ChimeraX offers <a href="https://www.cgl.ucsf.edu/chimerax/docs/user/tutorials.html" target="_blank">video tutorials</a></li>
+                        <li>Contact Yew Mun (<a href="mailto:yewmun.yip@crick.ac.uk">yewmun.yip@crick.ac.uk</a>) or Dani (<a href="mailto:daniella.hares@crick.ac.uk">daniella.hares@crick.ac.uk</a>) for personalized help</li>
+                    </ul>
+                </div>
+            </details>
+        </div>
+    </div>
+</div>
+
+<!-- FAQ Section -->
+<div class="collapsible-section help-section" id="faq">
+    <div class="collapsible-header" onclick="toggleSection(this)">
+        <h3>❓ Common Questions</h3>
+        <span class="collapsible-icon">▼</span>
+    </div>
+    <div class="collapsible-content">
+        <div class="collapsible-inner">
+            <details style="margin: 1rem 0; padding: 1rem; background: #f8f9fa; border-radius: 4px; cursor: pointer;">
+                <summary style="font-weight: 600; padding: 0.5rem;">⏱️ How long does a job take?</summary>
+                <div style="padding: 1rem 0;">
+                    <p>Typical preprocessing jobs complete in <strong>5-30 minutes</strong> depending on protein size and complexity. You'll receive an email when your job completes.</p>
+                </div>
+            </details>
+            
+            <details style="margin: 1rem 0; padding: 1rem; background: #f8f9fa; border-radius: 4px; cursor: pointer;">
+                <summary style="font-weight: 600; padding: 0.5rem;">❌ What if my job fails?</summary>
+                <div style="padding: 1rem 0;">
+                    <p>Check the error message in your email. Common issues include:</p>
+                    <ul style="padding-left: 1.5rem;">
+                        <li><strong>Invalid PDB format</strong> - ensure your file is properly formatted</li>
+                        <li><strong>Incorrect chain ID</strong> - verify the chain exists in your PDB</li>
+                        <li><strong>Missing ligand</strong> - if specifying a ligand, ensure both ID and SDF file are provided</li>
+                    </ul>
+                    <div class="info-box">
+                        <strong>Need help?</strong> Contact the Chemical Biology STP's computational chemists, Yew Mun (<a href="mailto:yewmun.yip@crick.ac.uk">yewmun.yip@crick.ac.uk</a>) or Dani (<a href="mailto:daniella.hares@crick.ac.uk">daniella.hares@crick.ac.uk</a>) with your Job ID.
+                    </div>
+                </div>
+            </details>
+            
+            <details style="margin: 1rem 0; padding: 1rem; background: #f8f9fa; border-radius: 4px; cursor: pointer;">
+                <summary style="font-weight: 600; padding: 0.5rem;">📦 Can I download all files at once?</summary>
+                <div style="padding: 1rem 0;">
+                    <p>Yes! Use the <strong>"Download All Files (ZIP)"</strong> button on the job details page to get everything in one archive.</p>
+                </div>
+            </details>
+            
+            <details style="margin: 1rem 0; padding: 1rem; background: #f8f9fa; border-radius: 4px; cursor: pointer;">
+                <summary style="font-weight: 600; padding: 0.5rem;">💾 How long are results stored?</summary>
+                <div style="padding: 1rem 0;">
+                    <p>Job results are stored <strong>indefinitely</strong> on the HPC. You can access them anytime through the web interface.</p>
+                </div>
+            </details>
+        </div>
+    </div>
+</div>
+
+<!-- About MaSIF-neosurf Section -->
+<div class="collapsible-section help-section" id="about">
+    <div class="collapsible-header" onclick="toggleSection(this)">
+        <h3>🔬 About MaSIF-neosurf</h3>
+        <span class="collapsible-icon">▼</span>
+    </div>
+    <div class="collapsible-content">
+        <div class="collapsible-inner">
+            <div class="highlight-box">
+                <h4 style="margin-top: 0;">Scientific Background</h4>
+                <p>MaSIF-neosurf is a computational strategy for designing proteins that target <strong>neosurfaces</strong> - surfaces arising from protein-ligand complexes. Published in <em>Nature</em> (2025), this approach uses geometric deep learning based on learned molecular surface representations.</p>
+            </div>
+            
+            <h4>Key Innovation</h4>
+            <p>The method leverages surface fingerprints previously trained only on proteins and applies them to neosurfaces induced by small molecules. This demonstrates remarkable generalizability uncommon in other deep learning approaches.</p>
+            
+            <h4>What Makes It Special?</h4>
+            <ul class="icon-list">
+                <li><strong>Generalizable:</strong> Works on both protein and small-molecule surfaces without additional training</li>
+                <li><strong>Surface-centric:</strong> Uses geometric and chemical features of molecular surfaces rather than atomic details</li>
+                <li><strong>Validated:</strong> Successfully designed binders against drug-bound protein complexes with high affinity and specificity</li>
+                <li><strong>Versatile:</strong> Can be used for biosensors, synthetic biology circuits, and cell-based therapeutics</li>
+            </ul>
+            
+            <details style="margin: 1.5rem 0;">
+                <summary style="font-weight: 600; font-size: 1.1rem; padding: 0.5rem; cursor: pointer; background: #f0f0f0; border-radius: 4px;">
+                    🔧 The Preprocessing Pipeline
+                </summary>
+                <div style="margin-top: 1rem;">
+                    <p>The preprocessing step you're running prepares your protein structure for analysis by:</p>
+                    <ol style="line-height: 1.8; padding-left: 1.5rem;">
+                        <li>Computing molecular surface representations</li>
+                        <li>Calculating geometric features (shape index, curvature)</li>
+                        <li>Computing chemical features (electrostatics, hydrophobicity, H-bond donors/acceptors)</li>
+                        <li>Generating surface patches and descriptors for analysis</li>
+                    </ol>
+                </div>
+            </details>
+            
+            <details style="margin: 1.5rem 0;">
+                <summary style="font-weight: 600; font-size: 1.1rem; padding: 0.5rem; cursor: pointer; background: #f0f0f0; border-radius: 4px;">
+                    🎯 Applications
+                </summary>
+                <div style="margin-top: 1rem;">
+                    <p>Designed chemically-induced protein interactions have potential applications in:</p>
+                    <ul class="icon-list">
+                        <li>Expanding sensing repertoires in engineered cells</li>
+                        <li>Assembling new synthetic pathways</li>
+                        <li>Drug-controlled cell-based therapies</li>
+                        <li>Molecular switches for precise spatiotemporal control</li>
+                    </ul>
+                </div>
+            </details>
+        </div>
+    </div>
+</div>
+
+<!-- Resources Section -->
+<div class="collapsible-section help-section" id="resources">
+    <div class="collapsible-header" onclick="toggleSection(this)">
+        <h3>📖 Additional Resources</h3>
+        <span class="collapsible-icon">▼</span>
+    </div>
+    <div class="collapsible-content">
+        <div class="collapsible-inner">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+                <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px;">
+                    <h4 style="margin-top: 0;">🔗 Links</h4>
+                    <ul style="line-height: 2;">
+                        <li><a href="https://github.com/LPDI-EPFL/masif-neosurf" target="_blank">GitHub Repository</a></li>
+                        <li><a href="https://www.nature.com/articles/s41586-024-08435-4" target="_blank">Nature Paper (2025)</a></li>
+                        <li><a href="https://www.nature.com/articles/s41586-021-04383-5" target="_blank">Original MaSIF Paper</a></li>
+                    </ul>
+                </div>
+                
+                <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px;">
+                    <h4 style="margin-top: 0;">📧 Contact</h4>
+                    <p><strong>Chemical Biology STP Computational Chemists:</strong></p>
+                    <ul style="list-style: none; padding: 0; line-height: 1.8;">
+                        <li>Yew Mun: <a href="mailto:yewmun.yip@crick.ac.uk">yewmun.yip@crick.ac.uk</a></li>
+                        <li>Dani: <a href="mailto:daniella.hares@crick.ac.uk">daniella.hares@crick.ac.uk</a></li>
+                    </ul>
+                    <p style="margin-top: 1rem; font-size: 0.9rem; color: #666;">Include your Job ID when reporting issues</p>
+                </div>
+            </div>
+            
+            <div class="info-box" style="margin-top: 1.5rem;">
+                <h4 style="margin-top: 0;">📝 Citation</h4>
+                <p style="font-size: 0.95rem; line-height: 1.6;">
+                    Marchand, A., Buckley, S., Schneuing, A. <em>et al.</em> Targeting protein–ligand neosurfaces with a generalizable deep learning tool. <em>Nature</em> <strong>639</strong>, 522–531 (2025)
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div style="margin-top: 2rem; text-align: center;">
+    <a href="{{ url_for('index') }}" class="btn btn-secondary">← Back to Home</a>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleSection(header) {
+    const content = header.nextElementSibling;
+    const icon = header.querySelector('.collapsible-icon');
+    
+    content.classList.toggle('open');
+    icon.classList.toggle('open');
+}
+
+// Open first section by default
+document.addEventListener('DOMContentLoaded', function() {
+    const firstSection = document.querySelector('.collapsible-section');
+    if (firstSection) {
+        const firstHeader = firstSection.querySelector('.collapsible-header');
+        // Already open by default in HTML
+    }
+});
+
+// Smooth scroll to sections when clicking nav links
+document.querySelectorAll('.help-nav a').forEach(link => {
+    link.addEventListener('click', function(e) {
+        e.preventDefault();
+        const targetId = this.getAttribute('href').substring(1);
+        const targetSection = document.getElementById(targetId);
+        
+        if (targetSection) {
+            // Open the section if it's closed
+            const content = targetSection.querySelector('.collapsible-content');
+            const icon = targetSection.querySelector('.collapsible-icon');
+            if (!content.classList.contains('open')) {
+                content.classList.add('open');
+                icon.classList.add('open');
+            }
+            
+            // Scroll to section
+            targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    });
+});
+</script>
+{% endblock %}
