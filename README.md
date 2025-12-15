@@ -1,9 +1,14 @@
 # _MaSIF-neosurf_ – Surface-based protein design for ternary complexes
 
-
-Code repository for ["Targeting protein-ligand neosurfaces with a generalizable deep learning tool"](citation.bib).
-
 [![DOI](https://zenodo.org/badge/DOI/10.1038/s41586-024-08435-4.svg)](https://doi.org/10.1038/s41586-024-08435-4)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.6+-blue.svg)](https://www.python.org/downloads/)
+
+> **Note:** This is a fork maintained by the [Chemical Biology STP](https://intranet.crick.ac.uk/our-crick/chemical-biology) at The Francis Crick Institute. It includes additional features such as a web interface for HPC job submission and enhanced deployment options.
+> 
+> **Original repository:** [LPDI-EPFL/masif-neosurf](https://github.com/LPDI-EPFL/masif-neosurf)
+
+Code repository for ["Targeting protein-ligand neosurfaces with a generalizable deep learning tool"](docs/citation.bib).
 
 ## Table of Contents
 
