@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  pymol-vnc:
+    build: .
+    container_name: pymol-vnc
+    environment:
+      - VNC_PASSWORD=pymol123
+      - VNC_RESOLUTION=1280x1024
+      - VNC_DEPTH=24
+    ports:
+      - "6080:6080"
+      - "5901:5901"
+    restart: unless-stopped
+    # Uncomment for GPU support (requires nvidia-docker2)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  nginx:
+    image: nginx:alpine
+    container_name: pymol-proxy
+    ports:
+      - "8080:80"
+      # - "443:443"  # Uncomment for SSL
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      # - ./certs:/etc/nginx/certs:ro  # Add SSL certificates
+    depends_on:
+      - pymol-vnc
+    restart: unless-stopped
