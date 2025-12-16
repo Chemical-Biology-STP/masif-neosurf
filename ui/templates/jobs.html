@@ -360,8 +360,8 @@ function deleteSelected() {
     
     // Confirm deletion
     const message = jobUuids.length === 1 
-        ? `Are you sure you want to delete "${jobNames[0]}"?\n\nThe job will be hidden from your list but kept in the system for statistics.`
-        : `Are you sure you want to delete ${jobUuids.length} jobs?\n\nThe jobs will be hidden from your list but kept in the system for statistics.`;
+        ? `Are you sure you want to delete "${jobNames[0]}"?`
+        : `Are you sure you want to delete ${jobUuids.length} jobs?`;
     
     if (!confirm(message)) {
         return;
