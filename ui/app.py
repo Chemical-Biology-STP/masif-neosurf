@@ -1113,6 +1113,9 @@ def list_jobs():
             metadata_file = job_dir / 'metadata.json'
             if metadata_file.exists():
                 metadata = json.loads(metadata_file.read_text())
+                # Skip deleted jobs (soft delete)
+                if metadata.get('deleted', False):
+                    continue
                 # Show all jobs for admin, only own jobs for regular users
                 if current_user.is_admin or metadata.get('user_id') == current_user.id:
                     # Don't fetch status here - will be loaded via AJAX
@@ -1874,6 +1877,61 @@ def download_multiple_jobs():
         return redirect(url_for('list_jobs'))
 
 
+@app.route('/delete-jobs', methods=['POST'])
+@login_required
+def delete_jobs():
+    """Soft delete one or multiple jobs (marks as deleted, doesn't actually remove)"""
+    job_uuids = request.form.getlist('job_uuids')
+    
+    if not job_uuids:
+        return jsonify({'success': False, 'error': 'No jobs selected'}), 400
+    
+    deleted_count = 0
+    errors = []
+    
+    for job_uuid in job_uuids:
+        try:
+            # Find job directory
+            job_dirs = list(app.config['OUTPUT_FOLDER'].glob(f'*_{job_uuid}'))
+            if not job_dirs:
+                errors.append(f'Job {job_uuid} not found')
+                continue
+            
+            local_job_dir = job_dirs[0]
+            metadata_file = local_job_dir / 'metadata.json'
+            
+            if not metadata_file.exists():
+                errors.append(f'Job {job_uuid} metadata not found')
+                continue
+            
+            metadata = json.loads(metadata_file.read_text())
+            
+            # Check if job belongs to current user (or if user is admin)
+            if not current_user.is_admin and metadata.get('user_id') != current_user.id:
+                errors.append(f'Access denied for job {job_uuid}')
+                continue
+            
+            # Soft delete: mark as deleted with timestamp
+            metadata['deleted'] = True
+            metadata['deleted_at'] = datetime.now().isoformat()
+            metadata['deleted_by'] = current_user.id
+            
+            # Save updated metadata
+            metadata_file.write_text(json.dumps(metadata, indent=2))
+            deleted_count += 1
+            
+        except Exception as e:
+            errors.append(f'Error deleting job {job_uuid}: {str(e)}')
+    
+    if deleted_count > 0:
+        message = f'Successfully deleted {deleted_count} job(s)'
+        if errors:
+            message += f'. {len(errors)} error(s) occurred.'
+        return jsonify({'success': True, 'message': message, 'deleted_count': deleted_count, 'errors': errors})
+    else:
+        return jsonify({'success': False, 'error': 'No jobs were deleted', 'errors': errors}), 400
+
+
 @app.route('/admin')
 @login_required
 def admin_dashboard():
@@ -1921,6 +1979,28 @@ def admin_dashboard():
     }
     
     return render_template('admin.html', users=user_list, stats=stats)
+
+
+@app.route('/admin/deleted-jobs')
+@login_required
+def admin_deleted_jobs():
+    """View deleted jobs (admin only - for statistics)"""
+    if not current_user.is_admin:
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('index'))
+    
+    deleted_jobs = []
+    for job_dir in sorted(app.config['OUTPUT_FOLDER'].iterdir(), reverse=True):
+        if job_dir.is_dir():
+            metadata_file = job_dir / 'metadata.json'
+            if metadata_file.exists():
+                metadata = json.loads(metadata_file.read_text())
+                # Only show deleted jobs
+                if metadata.get('deleted', False):
+                    metadata['status'] = 'DELETED'
+                    deleted_jobs.append(metadata)
+    
+    return render_template('admin_deleted_jobs.html', jobs=deleted_jobs)
 
 
 @app.route('/admin/send-verification/<user_id>', methods=['POST'])

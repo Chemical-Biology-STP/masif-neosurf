@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Deleted Jobs - Admin{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <div>
+            <h2 style="margin-bottom: 0.25rem;">Deleted Jobs (Statistics)</h2>
+            <p style="color: #666; font-size: 0.875rem;">
+                Jobs that have been deleted by users (soft delete - kept for statistics)
+            </p>
+        </div>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">
+            ← Back to Admin
+        </a>
+    </div>
+    
+    {% if jobs %}
+    <div style="margin-bottom: 1rem; padding: 1rem; background: #FEF3C7; border-left: 4px solid #F59E0B; border-radius: 8px;">
+        <strong>ℹ️ Note:</strong> These jobs are hidden from users but kept in the system for statistical analysis.
+        Total deleted jobs: <strong>{{ jobs|length }}</strong>
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Job Name</th>
+                <th>Job ID</th>
+                <th>User</th>
+                <th>PDB File</th>
+                <th>Chain ID</th>
+                <th>Submitted</th>
+                <th>Deleted</th>
+                <th>Deleted By</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for job in jobs %}
+            <tr style="opacity: 0.7;">
+                <td><strong>{{ job.job_name }}</strong></td>
+                <td><code>{{ job.job_id }}</code></td>
+                <td>
+                    <small>{{ job.get('user_email', 'Unknown') }}</small>
+                </td>
+                <td>{{ job.pdb_file }}</td>
+                <td><code>{{ job.chain_id }}</code></td>
+                <td>{{ job.submitted_at[:19] }}</td>
+                <td>{{ job.get('deleted_at', 'Unknown')[:19] }}</td>
+                <td>
+                    <small>{{ job.get('deleted_by', 'Unknown') }}</small>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="alert alert-info">
+        No deleted jobs found. All jobs are active.
+    </div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h3>Statistics</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+        <div style="padding: 1rem; background: var(--gray-50); border-radius: 8px;">
+            <div style="font-size: 2rem; font-weight: 700; color: var(--danger);">{{ jobs|length }}</div>
+            <div style="color: var(--gray-600); font-size: 0.875rem;">Total Deleted Jobs</div>
+        </div>
+        <div style="padding: 1rem; background: var(--gray-50); border-radius: 8px;">
+            <div style="font-size: 2rem; font-weight: 700; color: var(--primary);">
+                {{ jobs|selectattr('deleted_at')|list|length }}
+            </div>
+            <div style="color: var(--gray-600); font-size: 0.875rem;">With Deletion Timestamp</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
